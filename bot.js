@@ -15,8 +15,7 @@ const client = new Client({
     ]
 });
 
-const xamppPath = 'C:\\xampp\\htdocs\\site_futika2\\users.json';
-const usersFile = fs.existsSync(path.dirname(xamppPath)) ? xamppPath : path.join(__dirname, 'users.json');
+const usersFile = path.join(__dirname, 'users.json');
 const defaultUsers = {
     admin: { password: 'admin123', discord_id: 'system' }
 };
