@@ -124,6 +124,11 @@ function getStatusBadgeForMaster($status)
 </head>
 
 <body>
+    <button class="burger-btn" id="burgerBtn" aria-label="Меню">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar glass">
@@ -512,6 +517,18 @@ function getStatusBadgeForMaster($status)
                 }
             });
         });
+    </script>
+    <script>
+        const burgerBtn = document.getElementById('burgerBtn');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        function toggleMenu() {
+            burgerBtn.classList.toggle('open');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+        burgerBtn.addEventListener('click', toggleMenu);
+        overlay.addEventListener('click', toggleMenu);
     </script>
 </body>
 
