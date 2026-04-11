@@ -1,6 +1,5 @@
 <?php
-$pdo = new PDO('mysql:host=localhost;dbname=futurama;charset=utf8', 'root', '');
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+require_once 'db.php';
 
 // История событий (принятия/увольнения)
 $pdo->exec("CREATE TABLE IF NOT EXISTS staff_events (
