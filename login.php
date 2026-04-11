@@ -13,15 +13,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user && $user['password'] === $password) { // На текущем этапе пароли открытые, как в исходнике
-            $_SESSION['user_logged_in'] = true;
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['discord_id'] = $user['discord_id'];
-            $_SESSION['role'] = $user['role'];
-            header('Location: index.php');
-            exit;
+        if ($user) {
+            if ($user['password'] === $password) {
+                $_SESSION['user_logged_in'] = true;
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['discord_id'] = $user['discord_id'];
+                $_SESSION['role'] = $user['role'];
+                header('Location: index.php');
+                exit;
+            } else {
+                $error = "Неверный пароль. Ожидалось: [{$user['password']}], Вы ввели: [{$password}]";
+            }
         } else {
-            $error = 'Неверный логин или пароль';
+            $error = "Пользователь не найден: [{$username}]";
         }
     } else {
         $error = 'Введите логин и пароль';
