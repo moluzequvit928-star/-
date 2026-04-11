@@ -140,15 +140,6 @@ function getStatusBadgeForMaster($status)
                 <?php endif; ?>
                 <?php if ($current_role === 'admin' || $current_role === 'curator'): ?>
                     <a href="reattestation.php" class="menu-item">Переаттестация</a>
-                <?php endif; ?>
-                
-                <div class="menu-section-title">Полезные ссылки</div>
-                <a href="https://docs.google.com/spreadsheets/d/1w2r_C3R7kh5CDvlehOHOjd3DPnvCMBQ9SnXZnB6t754/edit?gid=1970062457#gid=1970062457"
-                    class="menu-item highlight" target="_blank">Google Таблица ↗</a>
-                <a href="https://docs.google.com/document/d/1tef_iQ0GuuIVgQRI15Ql8H74BFPjEcI9Cg3qZCQrtL8/edit?tab=t.0"
-                    class="menu-item highlight" target="_blank">Собес на саппорта ↗</a>
-
-                <?php if ($current_role === 'admin' || $current_role === 'curator'): ?>
                     <a href="check_reports.php" class="menu-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Проверка отчетов</span>
                         <?php if ($sidebarPendingCount > 0): ?>
@@ -156,6 +147,12 @@ function getStatusBadgeForMaster($status)
                         <?php endif; ?>
                     </a>
                 <?php endif; ?>
+
+                <div class="menu-section-title">Полезные ссылки</div>
+                <a href="https://docs.google.com/spreadsheets/d/1w2r_C3R7kh5CDvlehOHOjd3DPnvCMBQ9SnXZnB6t754/edit?gid=1970062457#gid=1970062457"
+                    class="menu-item highlight" target="_blank">Google Таблица ↗</a>
+                <a href="https://docs.google.com/document/d/1tef_iQ0GuuIVgQRI15Ql8H74BFPjEcI9Cg3qZCQrtL8/edit?tab=t.0"
+                    class="menu-item highlight" target="_blank">Собес на саппорта ↗</a>
 
                 <div class="menu-section-title">Работа</div>
                 <a href="reports.php" class="menu-item active">Отчеты по наборам</a>
