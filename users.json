@@ -1,0 +1,18 @@
+{
+    "admin": {
+        "password": "admin123",
+        "discord_id": "system"
+    },
+    "nevermore8465": {
+        "password": "6689d3d6",
+        "discord_id": "964646916484894741",
+        "discord_tag": "nevermore8465",
+        "role": "curator"
+    },
+    "ronnieemeh08807": {
+        "password": "4f623ab6",
+        "discord_id": "1187005753370882150",
+        "discord_tag": "ronnieemeh_08807",
+        "role": "admin"
+    }
+}

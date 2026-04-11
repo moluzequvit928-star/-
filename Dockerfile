@@ -1,0 +1,30 @@
+FROM php:8.2-apache
+
+RUN apt-get update && apt-get install -y \
+    libzip-dev \
+    curl \
+    gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && docker-php-ext-install pdo pdo_mysql \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN a2enmod rewrite
+
+WORKDIR /var/www/html
+COPY . /var/www/html/
+
+# Устанавливаем зависимости для Discord бота
+RUN npm install
+
+# Папки для сохранения загруженных картинок (отчетов)
+RUN mkdir -p /var/www/html/uploads \
+    && chmod -R 777 /var/www/html/uploads
+
+# Создаем скрипт, который параллельно запускает и сайт, и бота
+RUN echo '#!/bin/bash\napache2-foreground &\nsleep 2\nnode bot.js\n' > /start.sh \
+    && chmod +x /start.sh
+
+EXPOSE 80
+
+CMD ["/start.sh"]
