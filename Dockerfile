@@ -24,8 +24,8 @@ RUN npm install
 RUN mkdir -p /var/www/html/uploads \
     && chmod -R 777 /var/www/html/uploads
 
-# Создаем скрипт, который параллельно запускает и сайт, и бота
-RUN echo '#!/bin/bash\nnode bot.js &\nexec apache2-foreground\n' > /start.sh \
+# Создаем скрипт, который запускает встроенный сервер PHP и бота (без глючного Apache)
+RUN echo '#!/bin/bash\nnode bot.js &\nexec php -S 0.0.0.0:${PORT:-80} -t /var/www/html\n' > /start.sh \
     && chmod +x /start.sh
 
 EXPOSE 80
