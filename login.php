@@ -22,10 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: index.php');
                 exit;
             } else {
-                $error = "Неверный пароль. Ожидалось: [{$user['password']}], Вы ввели: [{$password}]";
+                $error = 'Неверный логин или пароль';
             }
         } else {
-            $error = "Пользователь не найден: [{$username}]";
+            $error = 'Неверный логин или пароль';
         }
     } else {
         $error = 'Введите логин и пароль';
