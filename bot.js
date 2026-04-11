@@ -3,8 +3,10 @@ const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
 
-const TOKEN = 'MTQ4OTc4MjQxMjkyNDgxMzQ0NQ.GrYEuZ.8Wm0GcDztGgh7kTuY88h0GLCVIA35WeuBJoFUs';
-const CLIENT_ID = '1489782412924813445';
+// Берем токен из переменных хостинга, чтобы Дискорд его не банил на GitHub
+const TOKEN = process.env.DISCORD_TOKEN || 'СЮДА_ВСТАВИТЬ_ДЛЯ_ЛОКАЛЬНОГО_ТЕСТА';
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1489782412924813445';
+
 
 const client = new Client({
     intents: [
