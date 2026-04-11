@@ -9,9 +9,10 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install pdo pdo_mysql \
     && rm -rf /var/lib/apt/lists/*
 
-RUN a2dismod mpm_event mpm_worker || true \
-    && a2enmod mpm_prefork || true \
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* \
+    && a2enmod mpm_prefork \
     && a2enmod rewrite
+
 
 WORKDIR /var/www/html
 COPY . /var/www/html/
