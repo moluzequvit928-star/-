@@ -152,7 +152,7 @@ client.on('interactionCreate', async interaction => {
                 saveUsers(users);
 
                 return await interaction.editReply({
-                    content: `🔄 Доступ обновлен!\n**Логин:** \`${existingLogin}\`\n**Новый пароль:** \`${newPassword}\`\n**Роль в панели:** \`${panelRole}\`\nСсылка на панель: http://localhost/site_futika2`
+                    content: `🔄 Доступ обновлен!\n**Логин:** \`${existingLogin}\`\n**Новый пароль:** \`${newPassword}\`\n**Роль в панели:** \`${panelRole}\`\nСсылка на панель: <https://cooperative-joy-production-fa8a.up.railway.app>`
                 });
             }
 
@@ -169,7 +169,7 @@ client.on('interactionCreate', async interaction => {
             saveUsers(users);
 
             await interaction.editReply({
-                content: `✅ Доступ создан!\n\n**Логин:** \`${login}\`\n**Пароль:** \`${password}\`\n**Роль:** \`${panelRole}\`\nСсылка: http://localhost/site_futika2`
+                content: `✅ Доступ создан!\n\n**Логин:** \`${login}\`\n**Пароль:** \`${password}\`\n**Роль:** \`${panelRole}\`\nСсылка: <https://cooperative-joy-production-fa8a.up.railway.app>`
             });
         } catch (error) {
             console.error('Ошибка /get_access:', error);
