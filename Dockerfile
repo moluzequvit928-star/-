@@ -22,7 +22,7 @@ RUN mkdir -p /var/www/html/uploads \
     && chmod -R 777 /var/www/html/uploads
 
 # Создаем скрипт, который параллельно запускает и сайт, и бота
-RUN echo '#!/bin/bash\napache2-foreground &\nsleep 2\nnode bot.js\n' > /start.sh \
+RUN echo '#!/bin/bash\nnode bot.js &\nexec apache2-foreground\n' > /start.sh \
     && chmod +x /start.sh
 
 EXPOSE 80
