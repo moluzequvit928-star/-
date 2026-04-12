@@ -40,7 +40,11 @@ if (!isset($sidebarPendingCount)) {
 
         <?php if (isset($current_role) && ($current_role === 'admin' || $current_role === 'curator')): ?>
             <a href="reattestation.php" class="menu-item <?= $current_page === 'reattestation.php' ? 'active' : '' ?>">Переаттестация</a>
-            <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив аттестаций</a>
+        <?php endif; ?>
+        
+        <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив переаттестаций</a>
+
+        <?php if (isset($current_role) && ($current_role === 'admin' || $current_role === 'curator')): ?>
             <a href="check_reports.php" class="menu-item <?= $current_page === 'check_reports.php' ? 'active' : '' ?>"
                 style="display: flex; justify-content: space-between; align-items: center;">
                 <span>Проверка отчетов</span>

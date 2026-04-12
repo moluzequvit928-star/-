@@ -12,7 +12,17 @@ require_once 'user_header.php';
 $curator = $_SESSION['username'] ?? '';
 $role = $_SESSION['role'] ?? 'master';
 
-// Админы видят всё, кураторы только своё
+// Создаем таблицу, если её нет (чтобы не было ошибки Column not found)
+$pdo->exec("CREATE TABLE IF NOT EXISTS reattestations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    discord_id VARCHAR(50) NOT NULL,
+    discord_nickname VARCHAR(100) NOT NULL,
+    curator VARCHAR(100) NOT NULL,
+    result VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
+// Админы видят всё, остальные только своё (или если админ зашел под кем-то)
 if ($role === 'admin' || $role === 'chief' || $role === 'senior_curator') {
     $stmt = $pdo->prepare("SELECT * FROM reattestations ORDER BY created_at DESC");
     $stmt->execute();
