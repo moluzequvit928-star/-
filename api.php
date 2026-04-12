@@ -525,19 +525,25 @@ function handleSetReattestationResult(): void
         return;
     }
 
-    $payload = [
-        'event' => 'reattestation_passed',
-        'discord_id' => $discordId,
-        'discord_nickname' => $nick,
-        'curator' => $curator,
-        'date' => $date,
-        'status' => $result,
-        'approved_by' => $_SESSION['username'] ?? 'system',
-        'approved_at' => date('c')
-    ];
+    global $pdo;
+    try {
+        // Создаем таблицу, если её нет
+        $pdo->exec("CREATE TABLE IF NOT EXISTS reattestations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            discord_id VARCHAR(50) NOT NULL,
+            discord_nickname VARCHAR(100) NOT NULL,
+            curator VARCHAR(100) NOT NULL,
+            result VARCHAR(20) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
 
-    // $sent = sendResultToAppsScript($payload);
-    echo json_encode(['success' => true, 'message' => 'Результат сохранен локально (синхронизация отключена)']);
+        $stmt = $pdo->prepare("INSERT INTO reattestations (discord_id, discord_nickname, curator, result) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$discordId, $nick, $curator, $result]);
+
+        echo json_encode(['success' => true, 'message' => 'Результат успешно сохранен в архив']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'Ошибка БД: ' . $e->getMessage()]);
+    }
 }
 
 function handleReattestationQueue(): void
