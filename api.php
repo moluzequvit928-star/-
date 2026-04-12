@@ -399,12 +399,11 @@ function collectReattestationEntries(array $rows): array
                 }
             }
 
-            // Ищем куратора (обычно это поле после даты проведения)
-            // Или просто берем 6-ю колонку (G), как ты сказал
-            $curator = trim((string)($row[6] ?? ($row[5] ?? '')));
+            // Ищем куратора: ты сказал G7 (индекс 6)
+            $curator = trim((string)($row[6] ?? ''));
             
-            // Если в 6-й колонке не то, пробуем найти хоть какое-то имя (не число и не дата)
-            if ($curator === '' || preg_match('/^\d+$/', $curator) || looksLikeDate($curator)) {
+            // Если в колонке 6 пусто, ищем хоть какое-то имя в строке
+            if ($curator === '' || $curator === '-' || $curator === '—') {
                 foreach ($row as $idx => $cell) {
                     $val = trim((string)$cell);
                     if ($idx > $idIdx && $val !== '' && !preg_match('/^\d+$/', $val) && !looksLikeDate($val) && $val !== '-' && $val !== '—') {
@@ -414,6 +413,9 @@ function collectReattestationEntries(array $rows): array
                 }
             }
 
+            // Результат - это строго индекс 7 (H) или дальше
+            $result = trim((string)($row[7] ?? ''));
+
             $entries[] = [
                 'row_number' => $rowIndex + 1,
                 'discord_id' => $foundId,
@@ -421,7 +423,7 @@ function collectReattestationEntries(array $rows): array
                 'started_at' => trim((string)($row[2] ?? ($row[0] ?? '...'))),
                 'date' => $date,
                 'curator' => $curator,
-                'result' => trim((string)($row[7] ?? ($row[6] ?? '')))
+                'result' => $result
             ];
         }
     }

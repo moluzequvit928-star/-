@@ -55,6 +55,5 @@ if (!isset($sidebarPendingCount)) {
 
         <div class="menu-section-title">Работа</div>
         <a href="reports.php" class="menu-item <?= $current_page === 'reports.php' ? 'active' : '' ?>">Отчеты по наборам</a>
-        <a href="conduct.php" class="menu-item <?= $current_page === 'conduct.php' ? 'active' : '' ?>">Кодекс</a>
     </nav>
 </aside>
