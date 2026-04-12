@@ -54,7 +54,6 @@ if (!isset($sidebarPendingCount)) {
 
         <?php if (isset($current_role) && $current_role === 'master'): ?>
             <a href="master_info.php" class="menu-item <?= $current_page === 'master_info.php' ? 'active' : '' ?>">Информация</a>
-            <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив переаттестаций</a>
         <?php endif; ?>
 
         <div class="menu-section-title">Полезные ссылки</div>

@@ -12,6 +12,12 @@ require_once 'user_header.php';
 $curator = $_SESSION['username'] ?? '';
 $role = $_SESSION['role'] ?? 'master';
 
+// Обычным мастерам здесь делать нечего
+if ($role === 'master') {
+    header('Location: index.php');
+    exit;
+}
+
 // Радикальный фикс: если колонка отсутствует - пересоздаем таблицу полностью
 try {
     // Проверяем наличие колонки curator
