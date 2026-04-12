@@ -216,7 +216,7 @@ try {
                 queueRefreshBtn.disabled = true;
 
                 try {
-                    const response = await fetch(`api.php?action=reattestation_queue&curator=${encodeURIComponent(curator)}&ignore_cache=1`);
+                    const response = await fetch(`api.php?action=reattestation_queue&curator=${encodeURIComponent(curator)}&ignore_cache=1&t=${Date.now()}`);
                     const text = await response.text();
                     let data;
                     try {
