@@ -12,8 +12,19 @@ require_once 'user_header.php';
 $curator = $_SESSION['username'] ?? '';
 $role = $_SESSION['role'] ?? 'master';
 
-// Бронебойное создание таблицы и колонок
+// Радикальный фикс: если колонка отсутствует - пересоздаем таблицу полностью
 try {
+    // Проверяем наличие колонки curator
+    $checkTable = $pdo->query("SHOW TABLES LIKE 'reattestations'")->fetch();
+    if ($checkTable) {
+        $columns = $pdo->query("SHOW COLUMNS FROM reattestations LIKE 'curator'")->fetchAll();
+        if (empty($columns)) {
+            // Если таблицы есть, но колонки нет - сносим и пересоздаем
+            $pdo->exec("DROP TABLE reattestations");
+        }
+    }
+
+    // Создаем таблицу с правильной структурой
     $pdo->exec("CREATE TABLE IF NOT EXISTS reattestations (
         id INT AUTO_INCREMENT PRIMARY KEY,
         discord_id VARCHAR(50) NOT NULL,
@@ -22,18 +33,11 @@ try {
         result VARCHAR(20) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
-    
-    // На всякий случай проверяем, есть ли колонка curator (если таблица уже была)
-    $columns = $pdo->query("SHOW COLUMNS FROM reattestations LIKE 'curator'")->fetchAll();
-    if (empty($columns)) {
-        $pdo->exec("ALTER TABLE reattestations ADD COLUMN curator VARCHAR(100) NOT NULL AFTER discord_nickname");
-    }
 } catch (Exception $e) {
-    // Если таблица совсем сломана - пересоздаем (ОПАСНО, но эффективно)
-    // $pdo->exec("DROP TABLE reattestations");
+    // Если что-то не так, пробуем хотя бы просто создать
 }
 
-// Админы видят всё, остальные только своё (или если админ зашел под кем-то)
+// Теперь делаем запрос
 if ($role === 'admin' || $role === 'chief' || $role === 'senior_curator') {
     $stmt = $pdo->prepare("SELECT * FROM reattestations ORDER BY created_at DESC");
     $stmt->execute();
