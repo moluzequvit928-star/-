@@ -15,7 +15,7 @@ if (!isset($sidebarPendingCount)) {
     }
 }
 ?>
-<!-- SIDEBAR VERSION 2 - CACHE BYPASS -->
+<!-- SIDEBAR VERSION 2.1 - FIX MISSING ITEMS -->
 <aside class="sidebar glass">
     <div class="logo">
         <h2 style="letter-spacing: 1px;">Панель </h2>
