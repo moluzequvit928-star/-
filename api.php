@@ -366,58 +366,64 @@ function detectColsFromHeaderRow(array $row): array
 function collectReattestationEntries(array $rows): array
 {
     $entries = [];
-    $activeCols = [
-        'nick' => 3,    // D
-        'id' => 4,      // E
-        'date' => 5,    // F
-        'curator' => 6, // G
-        'started' => 2  // C
-    ];
+    $activeCols = ['id' => -1, 'nick' => -1, 'date' => -1, 'curator' => -1];
 
     foreach ($rows as $rowIndex => $row) {
-        // Пропускаем только совсем верхние заголовки (обычно 1-2 строки)
-        if ($rowIndex < 2) continue;
-        if (count($row) < 5) continue;
+        if (count($row) < 3) continue;
 
-        // Пытаемся найти Discord ID (длинное число 15-25 знаков)
-        $discordId = '';
-        
-        // Сначала проверяем приоритетную колонку (индекс 4 или 2)
-        $checkIndices = [4, 2, 3, 5]; 
-        foreach ($checkIndices as $idx) {
-            $val = trim((string)($row[$idx] ?? ''));
+        // Ищем Discord ID в любом месте строки
+        $foundId = '';
+        $idIdx = -1;
+        foreach ($row as $idx => $cell) {
+            $val = trim((string)$cell);
             if (preg_match('/^\d{15,25}$/', $val)) {
-                $discordId = $val;
-                // Если ID найден не в той колонке, где ожидали, пробуем адаптировать индексы для этой строки
-                if ($idx === 2) {
-                    // Вероятный сдвиг: ID в 2, значит Nick в 1, Date в 3, Curator в 4
-                    $actualNick = trim((string)($row[1] ?? ''));
-                    $actualDate = trim((string)($row[3] ?? ''));
-                    $actualCurator = trim((string)($row[4] ?? ''));
-                    $actualResult = trim((string)($row[5] ?? ''));
-                    $actualStarted = trim((string)($row[0] ?? ''));
-                } else {
-                    $actualNick = trim((string)($row[3] ?? ''));
-                    $actualDate = trim((string)($row[5] ?? ''));
-                    $actualCurator = trim((string)($row[6] ?? ''));
-                    $actualResult = trim((string)($row[7] ?? ''));
-                    $actualStarted = trim((string)($row[2] ?? ''));
-                }
+                $foundId = $val;
+                $idIdx = $idx;
                 break;
             }
         }
 
-        if (!$discordId) continue;
+        // Если нашли ID, собираем данные вокруг него
+        if ($foundId !== '') {
+            // Обычно: Ник слева от ID, Дата справа, Куратор еще правее
+            $nick = trim((string)($row[$idIdx - 1] ?? ($row[$idIdx - 2] ?? '')));
+            
+            // Ищем дату в строке (что-то похожее на DD.MM.YYYY)
+            $date = '';
+            foreach ($row as $idx => $cell) {
+                if (looksLikeDate((string)$cell)) {
+                    $date = trim((string)$cell);
+                    // Если это дата из начала строки (Встал), ищем вторую дату (Проведения)
+                    if ($idx < $idIdx) continue; 
+                    if ($date !== '') break;
+                }
+            }
 
-        $entries[] = [
-            'row_number' => $rowIndex + 1,
-            'discord_id' => $discordId,
-            'discord_nickname' => $actualNick ?? trim((string)($row[3] ?? '')),
-            'started_at' => ($actualStarted ?? trim((string)($row[2] ?? ''))) ?: '...',
-            'date' => $actualDate ?? trim((string)($row[5] ?? '')),
-            'curator' => $actualCurator ?? trim((string)($row[6] ?? '')),
-            'result' => $actualResult ?? trim((string)($row[7] ?? ''))
-        ];
+            // Ищем куратора (обычно это поле после даты проведения)
+            // Или просто берем 6-ю колонку (G), как ты сказал
+            $curator = trim((string)($row[6] ?? ($row[5] ?? '')));
+            
+            // Если в 6-й колонке не то, пробуем найти хоть какое-то имя (не число и не дата)
+            if ($curator === '' || preg_match('/^\d+$/', $curator) || looksLikeDate($curator)) {
+                foreach ($row as $idx => $cell) {
+                    $val = trim((string)$cell);
+                    if ($idx > $idIdx && $val !== '' && !preg_match('/^\d+$/', $val) && !looksLikeDate($val) && $val !== '-' && $val !== '—') {
+                        $curator = $val;
+                        break;
+                    }
+                }
+            }
+
+            $entries[] = [
+                'row_number' => $rowIndex + 1,
+                'discord_id' => $foundId,
+                'discord_nickname' => $nick ?: '...',
+                'started_at' => trim((string)($row[2] ?? ($row[0] ?? '...'))),
+                'date' => $date,
+                'curator' => $curator,
+                'result' => trim((string)($row[7] ?? ($row[6] ?? '')))
+            ];
+        }
     }
 
     return [
