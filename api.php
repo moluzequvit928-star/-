@@ -69,6 +69,9 @@ function loadCsvRows(string $csvUrl): array
     $bom = pack('H*', 'EFBBBF');
     $csvData = preg_replace("/^$bom/", '', $csvData);
 
+    $lines = preg_split("/\r\n|\n|\r/", trim($csvData));
+    $rows = [];
+
     // Определяем разделитель
     $firstLine = $lines[0] ?? '';
     $delimiter = (strpos($firstLine, ';') !== false && strpos($firstLine, ',') === false) ? ';' : ',';
