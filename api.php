@@ -43,9 +43,12 @@ function loadCsvRows(string $csvUrl): array
     $cacheFile = $cacheDir . '/sheet_cache_' . md5($csvUrl) . '.csv';
     $cacheTime = 300; // Кешируем на 5 минут (300 секунд)
 
+    // Если передан GET параметр ignore_cache=1, сбрасываем кеш
+    $ignoreCache = (isset($_GET['ignore_cache']) && $_GET['ignore_cache'] == '1');
+
     $csvData = '';
-    // Проверяем, есть ли свежий кеш
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheTime)) {
+    // Проверяем, есть ли свежий кеш (если не просили игнорировать)
+    if (!$ignoreCache && file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheTime)) {
         $csvData = file_get_contents($cacheFile);
     } else {
         // Если кеша нет или он старый - качаем из Google
