@@ -41,7 +41,7 @@ if (!isset($sidebarPendingCount)) {
         <?php if (isset($current_role) && ($current_role === 'admin' || $current_role === 'curator')): ?>
             <a href="reattestation.php" class="menu-item <?= $current_page === 'reattestation.php' ? 'active' : '' ?>">Переаттестация</a>
         <?php endif; ?>
-        
+
         <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив переаттестаций</a>
 
         <?php if (isset($current_role) && ($current_role === 'admin' || $current_role === 'curator')): ?>
