@@ -231,20 +231,7 @@ $questions = [
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="dashboard-container">
-        <aside class="sidebar glass">
-            <div class="logo">
-                <h2>Панель</h2>
-            </div>
-            <nav class="menu">
-                <a href="index.php" class="menu-item">Главная</a>
-                <a href="reports.php" class="menu-item">Отчеты по наборам</a>
-                <?php $current_role = $_SESSION['role'] ?? ''; ?>
-                <?php if ($current_role === 'admin' || $current_role === 'curator'): ?>
-                    <a href="check_reports.php" class="menu-item">Проверка отчетов</a>
-                <?php endif; ?>
-                <a href="reattestation.php" class="menu-item active">Переаттестация</a>
-            </nav>
-        </aside>
+        <?php require_once 'sidebar.php'; ?>
 
         <main class="main-content">
             <header class="header glass">
@@ -358,7 +345,7 @@ $questions = [
                 const verdict = document.getElementById('final-verdict');
 
                 // Условия провала
-                const failScattered = (scatteredWrong >= 5);
+                const failScattered = (scatteredWrong >= 6);
                 const failConsecutive = (maxConsecutiveMinus >= 6);
 
                 if (failScattered || failConsecutive) {
@@ -397,7 +384,7 @@ $questions = [
                 }
             }
 
-            const failScattered = (scatteredWrong >= 5);
+            const failScattered = (scatteredWrong >= 6);
             const failConsecutive = (maxConsecutiveMinus >= 6);
             const result = (failScattered || failConsecutive) ? 'не сдал' : 'сдал';
 
