@@ -309,11 +309,10 @@ $questions = [
             btnPart.classList.remove('active-part');
             btnMinus.classList.remove('active-minus');
 
-            if (status === 'plus') {
+            if (status === 'plus' || status === 'part') {
                 card.classList.add('passed');
-                btnPlus.classList.add('active-plus');
-            } else if (status === 'part') {
-                btnPart.classList.add('active-part');
+                if (status === 'plus') btnPlus.classList.add('active-plus');
+                else btnPart.classList.add('active-part');
             } else {
                 card.classList.add('failed');
                 btnMinus.classList.add('active-minus');
@@ -325,8 +324,8 @@ $questions = [
         function updateProgress() {
             const filled = answers.filter(a => a !== null).length;
 
-            // Считаем общее кол-во "не польностью правильных" (либо +- либо -)
-            const scatteredWrong = answers.filter(a => a === 'minus' || a === 'part').length;
+            // Считаем общее кол-во неправильных (только чистые минусы)
+            const scatteredWrong = answers.filter(a => a === 'minus').length;
 
             // Считаем макс. кол-во минусов подряд
             let maxConsecutiveMinus = 0;
@@ -371,7 +370,7 @@ $questions = [
         async function submitResults() {
             const filled = answers.filter(a => a !== null).length;
             const passedCount = answers.filter(a => a === 'plus').length;
-            const scatteredWrong = answers.filter(a => a === 'minus' || a === 'part').length;
+            const scatteredWrong = answers.filter(a => a === 'minus').length;
 
             let maxConsecutiveMinus = 0;
             let currentConsecutive = 0;
