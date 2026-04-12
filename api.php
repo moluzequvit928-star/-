@@ -544,8 +544,8 @@ function handleReattestationQueue(): void
     $url = "https://docs.google.com/spreadsheets/d/{$sheetId}/export?format=csv&gid={$gid}";
 
     $rows = loadCsvRows($url);
-    if (count($rows) < 7) { // Минимум 7 строк (заголовки + хотя бы одна строка данных)
-        echo json_encode(['success' => false, 'error' => 'Лист переаттестации пуст или данные начинаются позже нормы']);
+    if (empty($rows)) {
+        echo json_encode(['success' => false, 'error' => 'Лист переаттестации пуст']);
         return;
     }
 
@@ -564,29 +564,17 @@ function handleReattestationQueue(): void
         $result = $data['result'];
         $date = $data['date'];
 
-        if (!$showAll && $curatorFilter !== '') {
-            $rowCurator = normalizeText($curator);
-            // Прямое сравнение или вхождение (для случаев "Куратор | Nick" или просто "Nick")
-            $isMatch = ($rowCurator !== '') && (
-                $rowCurator === $curatorFilter
-                || mb_strpos($rowCurator, $curatorFilter) !== false
-                || mb_strpos($curatorFilter, $rowCurator) !== false
-            );
-
-            // Дополнительная проверка: если в фильтре или в ячейке есть тег (с решеткой или без)
-            if (!$isMatch && $rowCurator !== '') {
-                // Очищаем от лишних символов для более мягкого сравнения
-                $cleanRow = preg_replace('/[^a-z0-9]/i', '', $rowCurator);
-                $cleanFilter = preg_replace('/[^a-z0-9]/i', '', $curatorFilter);
-                if ($cleanRow !== '' && $cleanFilter !== '' && ($cleanRow === $cleanFilter || strpos($cleanRow, $cleanFilter) !== false)) {
-                    $isMatch = true;
-                }
-            }
-
-            if (!$isMatch) {
-                continue;
+        $isMatch = $showAll || ($curatorFilter === '');
+        if (!$isMatch) {
+            $rowCuratorClean = preg_replace('/[^a-z0-9]/i', '', normalizeText($curator));
+            $filterClean = preg_replace('/[^a-z0-9]/i', '', $curatorFilter);
+            
+            if ($rowCuratorClean !== '' && (strpos($rowCuratorClean, $filterClean) !== false || strpos($filterClean, $rowCuratorClean) !== false)) {
+                $isMatch = true;
             }
         }
+
+        if (!$isMatch) continue;
 
         // По ТЗ: если поле "Сдал/Не сдал" не пустое, значит переаттестация уже проведена.
         $normalizedResult = normalizeText($result);
