@@ -69,18 +69,22 @@ function loadCsvRows(string $csvUrl): array
     $bom = pack('H*', 'EFBBBF');
     $csvData = preg_replace("/^$bom/", '', $csvData);
 
-    $lines = preg_split("/\r\n|\n|\r/", trim($csvData));
-    $rows = [];
+    // Используем временный поток для корректной обработки многострочных ячеек
+    $stream = fopen('php://memory', 'r+');
+    fwrite($stream, $csvData);
+    rewind($stream);
 
-    // Определяем разделитель
-    $firstLine = $lines[0] ?? '';
+    // Определяем разделитель по первой строке
+    $firstLine = fgets($stream);
     $delimiter = (strpos($firstLine, ';') !== false && strpos($firstLine, ',') === false) ? ';' : ',';
+    rewind($stream);
 
-    foreach ($lines as $line) {
-        if (trim($line) === '')
-            continue;
-        $rows[] = str_getcsv($line, $delimiter);
+    $rows = [];
+    while (($row = fgetcsv($stream, 0, $delimiter)) !== false) {
+        if ($row === null || (count($row) === 1 && $row[0] === null)) continue;
+        $rows[] = $row;
     }
+    fclose($stream);
     return $rows;
 }
 
