@@ -15,6 +15,7 @@ if (!isset($sidebarPendingCount)) {
     }
 }
 ?>
+<!-- DEBUG: SIDEBAR UPDATED 20:59 -->
 <aside class="sidebar glass">
     <div class="logo">
         <h2>Панель</h2>
@@ -40,11 +41,7 @@ if (!isset($sidebarPendingCount)) {
 
         <?php if (isset($current_role) && ($current_role === 'admin' || $current_role === 'curator')): ?>
             <a href="reattestation.php" class="menu-item <?= $current_page === 'reattestation.php' ? 'active' : '' ?>">Переаттестация</a>
-        <?php endif; ?>
-
-        <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив переаттестаций</a>
-
-        <?php if (isset($current_role) && ($current_role === 'admin' || $current_role === 'curator')): ?>
+            <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив переаттестаций</a>
             <a href="check_reports.php" class="menu-item <?= $current_page === 'check_reports.php' ? 'active' : '' ?>"
                 style="display: flex; justify-content: space-between; align-items: center;">
                 <span>Проверка отчетов</span>
@@ -57,6 +54,7 @@ if (!isset($sidebarPendingCount)) {
 
         <?php if (isset($current_role) && $current_role === 'master'): ?>
             <a href="master_info.php" class="menu-item <?= $current_page === 'master_info.php' ? 'active' : '' ?>">Информация</a>
+            <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив переаттестаций</a>
         <?php endif; ?>
 
         <div class="menu-section-title">Полезные ссылки</div>
