@@ -363,8 +363,6 @@ function detectColsFromHeaderRow(array $row): array
 function collectReattestationEntries(array $rows): array
 {
     $entries = [];
-    $activeCols = null;
-
     $activeCols = [
         'nick' => 3,    // D
         'id' => 4,      // E
@@ -374,31 +372,54 @@ function collectReattestationEntries(array $rows): array
     ];
 
     foreach ($rows as $rowIndex => $row) {
-        if ($rowIndex < 6)
-            continue;
-        if (count($row) < 7)
-            continue;
+        // Пропускаем только совсем верхние заголовки (обычно 1-2 строки)
+        if ($rowIndex < 2) continue;
+        if (count($row) < 5) continue;
 
-        $discordId = trim((string) ($row[4] ?? ''));
-        if (!preg_match('/^\d{15,25}$/', $discordId)) {
-            continue;
+        // Пытаемся найти Discord ID (длинное число 15-25 знаков)
+        $discordId = '';
+        
+        // Сначала проверяем приоритетную колонку (индекс 4 или 2)
+        $checkIndices = [4, 2, 3, 5]; 
+        foreach ($checkIndices as $idx) {
+            $val = trim((string)($row[$idx] ?? ''));
+            if (preg_match('/^\d{15,25}$/', $val)) {
+                $discordId = $val;
+                // Если ID найден не в той колонке, где ожидали, пробуем адаптировать индексы для этой строки
+                if ($idx === 2) {
+                    // Вероятный сдвиг: ID в 2, значит Nick в 1, Date в 3, Curator в 4
+                    $actualNick = trim((string)($row[1] ?? ''));
+                    $actualDate = trim((string)($row[3] ?? ''));
+                    $actualCurator = trim((string)($row[4] ?? ''));
+                    $actualResult = trim((string)($row[5] ?? ''));
+                    $actualStarted = trim((string)($row[0] ?? ''));
+                } else {
+                    $actualNick = trim((string)($row[3] ?? ''));
+                    $actualDate = trim((string)($row[5] ?? ''));
+                    $actualCurator = trim((string)($row[6] ?? ''));
+                    $actualResult = trim((string)($row[7] ?? ''));
+                    $actualStarted = trim((string)($row[2] ?? ''));
+                }
+                break;
+            }
         }
+
+        if (!$discordId) continue;
 
         $entries[] = [
             'row_number' => $rowIndex + 1,
             'discord_id' => $discordId,
-            'discord_nickname' => trim((string) ($row[3] ?? '')),
-            'started_at' => trim((string) ($row[2] ?? '')) ?: '...',
-            'date' => trim((string) ($row[5] ?? '')),
-            'curator' => trim((string) ($row[6] ?? '')),
-            'result' => trim((string) ($row[7] ?? ''))
+            'discord_nickname' => $actualNick ?? trim((string)($row[3] ?? '')),
+            'started_at' => ($actualStarted ?? trim((string)($row[2] ?? ''))) ?: '...',
+            'date' => $actualDate ?? trim((string)($row[5] ?? '')),
+            'curator' => $actualCurator ?? trim((string)($row[6] ?? '')),
+            'result' => $actualResult ?? trim((string)($row[7] ?? ''))
         ];
     }
 
     return [
         'entries' => $entries,
-        'cols' => $activeCols,
-        'raw_sample' => array_slice($rows, 0, 10) // Для отладки
+        'cols' => $activeCols
     ];
 }
 
