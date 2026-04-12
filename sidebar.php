@@ -18,7 +18,7 @@ if (!isset($sidebarPendingCount)) {
 <!-- DEBUG: SIDEBAR UPDATED 20:59 -->
 <aside class="sidebar glass">
     <div class="logo">
-        <h2>Панель</h2>
+        <h2 style="letter-spacing: 1px;">Панель </h2>
     </div>
     <nav class="menu">
         <a href="index.php" class="menu-item <?= $current_page === 'index.php' ? 'active' : '' ?>">Главная</a>
