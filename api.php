@@ -381,8 +381,14 @@ function collectReattestationEntries(array $rows): array
         $idIdx = -1;
         foreach ($row as $idx => $cell) {
             $val = trim((string)$cell);
-            if (preg_match('/^\d{15,25}$/', $val)) {
-                $foundId = $val;
+            // Регулярка теперь понимает и чистые цифры, и научный формат (типа 7.77E+17)
+            if (preg_match('/^\d{15,25}$/', $val) || preg_match('/^\d\.\d+e\+\d+$/i', $val)) {
+                // Если это научный формат, пробуем превратить его обратно в строку цифр
+                if (stripos($val, 'e+') !== false) {
+                    $foundId = number_format((float)$val, 0, '', '');
+                } else {
+                    $foundId = $val;
+                }
                 $idIdx = $idx;
                 break;
             }
