@@ -8,6 +8,7 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
     echo json_encode(['error' => 'Unauthorized']);
     exit;
 }
+require_once 'db.php';
 $appConfig = @include __DIR__ . '/app_config.php';
 if (!is_array($appConfig)) {
     $appConfig = [];
