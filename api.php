@@ -131,5 +131,40 @@ foreach ($rows as $row) {
         }
     }
 }
+// 4. ДЕТАЛИ МАСТЕРА (КУРАТОР)
+if ($action === 'master_details') {
+    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));
+    $rows = loadCsvRows($csvUrl);
+    $myNick = normalizeText($_SESSION['username']);
+    $myShift = '';
+    $curator = 'Не назначен';
+
+    // Сначала ищем смену мастера
+    foreach ($rows as $row) {
+        if (isset($row[21]) && normalizeText($row[21]) === $myNick) {
+            $myShift = trim((string)($row[19] ?? ''));
+            break;
+        }
+    }
+
+    // Если смена найдена, ищем куратора этой смены в блоке кураторов (строки 15-24)
+    if ($myShift !== '') {
+        for ($i = 0; $i < count($rows); $i++) {
+            $logicRow = $i + 1;
+            if ($logicRow >= 15 && $logicRow <= 25) {
+                $row = $rows[$i];
+                $shift = trim((string)($row[19] ?? ''));
+                if ($shift === $myShift && isset($row[21])) {
+                    $curator = trim($row[21]);
+                    break;
+                }
+            }
+        }
+    }
+
+    echo json_encode(['success' => true, 'curator' => $curator, 'shift' => $myShift]);
+    exit;
+}
+
 echo json_encode(['success' => true, 'management' => $management]);
 ?>

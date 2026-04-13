@@ -70,37 +70,7 @@ $approvedReports = $stmtApproved->fetchColumn();
 </head>
 <body>
     <div class="dashboard-container">
-        <!-- Sidebar -->
-        <aside class="sidebar glass">
-            <div class="logo">
-                <h2>Панель</h2>
-            </div>
-            <nav class="menu">
-                <a href="index.php" class="menu-item">Главная</a>
-                <?php if ($current_role === 'master'): ?>
-                    <a href="master_info.php" class="menu-item active">Информация</a>
-                <?php endif; ?>
-                <?php if ($current_role === 'admin' || $current_role === 'curator'): ?>
-                    <a href="reattestation.php" class="menu-item">Переаттестация</a>
-                <?php endif; ?>
-
-                <div class="menu-section-title">Полезные ссылки</div>
-                <a href="https://docs.google.com/spreadsheets/d/1w2r_C3R7kh5CDvlehOHOjd3DPnvCMBQ9SnXZnB6t754/edit?gid=1970062457#gid=1970062457" class="menu-item highlight" target="_blank">Google Таблица ↗</a>
-                <a href="https://docs.google.com/document/d/1tef_iQ0GuuIVgQRI15Ql8H74BFPjEcI9Cg3qZCQrtL8/edit?tab=t.0" class="menu-item highlight" target="_blank">Собес на саппорта ↗</a>
-
-                <?php if ($current_role === 'admin' || $current_role === 'curator'): ?>
-                    <a href="check_reports.php" class="menu-item" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Проверка отчетов</span>
-                        <?php if ($sidebarPendingCount > 0): ?>
-                            <span style="background: #EF4444; color: white; font-size: 0.75rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; line-height: 1.6; min-width: 20px; text-align: center;"><?= $sidebarPendingCount ?></span>
-                        <?php endif; ?>
-                    </a>
-                <?php endif; ?>
-
-                <div class="menu-section-title">Работа</div>
-                <a href="reports.php" class="menu-item">Отчеты по наборам</a>
-            </nav>
-        </aside>
+        <?php require_once 'sidebar_v2.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -163,12 +133,12 @@ $approvedReports = $stmtApproved->fetchColumn();
                                     ${data.curator[0].toUpperCase()}
                                 </div>
                                 <div>
-                                    <div style="font-weight: 600; color: #F1F5F9;">${data.curator}</div>
-                                    <div style="font-size: 0.8rem; color: #94A3B8;">Основной куратор</div>
+                                    <div style="font-weight: 600; color: #F1F5F9;">${data.curator} ${data.shift ? `<span class="shift-badge">${data.shift}</span>` : ''}</div>
+                                    <div style="font-size: 0.8rem; color: #94A3B8;">Ваш куратор</div>
                                 </div>
                             `;
                         } else {
-                            curatorBox.innerHTML = '<span style="color: #94A3B8;">Куратор не назначен (не найден в основной таблице)</span>';
+                            curatorBox.innerHTML = '<span style="color: #94A3B8;">Куратор не найден (проверьте ник в таблице)</span>';
                         }
                     } else {
                         curatorBox.innerHTML = '<span style="color: #EF4444;">Ошибка: ' + (data.error || 'не удалось загрузить') + '</span>';
