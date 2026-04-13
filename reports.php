@@ -58,6 +58,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($uploadSuccess) {
+        // ЗАЩИТА ОТ ДУБЛИКАТОВ (АНТИ-СПАМ 10 секунд)
+        $stmtCheck = $pdo->prepare("SELECT id FROM reports WHERE master_name = ? AND candidate_id = ? AND created_at > (NOW() - INTERVAL 10 SECOND) LIMIT 1");
+        $stmtCheck->execute([$master_name, $candidate]);
+        if ($stmtCheck->fetch()) {
+            header('Location: reports.php?status=success'); // Пропускаем молча, так как это дубль
+            exit;
+        }
+
         try {
             $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, candidate_nickname, invited, screenshot_path, comment) VALUES (?, ?, ?, ?, ?, ?)");
             if ($stmt->execute([$master_name, $candidate, $candidate_nickname, $invited, $newFileName, $comment])) {
@@ -171,8 +179,8 @@ function getStatusBadgeForMaster($status)
                             Мастеров</span>
                     </div>
                     <div class="card-body">
-                        <form id="report-form" method="POST" enctype="multipart/form-data"
-                            style="display: flex; flex-direction: column; gap: 1rem; max-width: 600px;">
+                        <form method="POST" enctype="multipart/form-data" id="reportForm" onsubmit="const btn = this.querySelector('button[type=submit]'); btn.disabled = true; btn.innerText = 'Отправка...';" style="display: flex; flex-direction: column; gap: 1rem; max-width: 600px;">
+                        <input type="hidden" name="action" value="add">
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; width: 100%;">
                                 <div style="display: flex; flex-direction: column; gap: 0.4rem;">
                                     <label for="candidate_nickname" style="font-weight: 500; font-size: 0.95rem; color: var(--text-main);">Ник пользователя</label>
