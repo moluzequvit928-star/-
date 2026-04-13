@@ -18,8 +18,8 @@ function fetchStaffRows($gid = '1970062457') {
     if (!is_dir($cacheDir)) @mkdir($cacheDir, 0777, true);
     $cacheFile = $cacheDir . '/sheet_cache_' . md5($url) . '.csv';
     
-    // Кеш на 3 минуты (уменьшим для актуальности)
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 180)) {
+    // Кеш на 30 секунд для оперативного обновления
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 30)) {
         $csvData = file_get_contents($cacheFile);
     } else {
         $csvData = @file_get_contents($url);
@@ -60,17 +60,13 @@ function getMasterNicksForCurator($curatorNick) {
     $curatorNickNorm = normalizeStaffNick($curatorNick);
     $curatorShifts = [];
     
-    // 1. Ищем, какие смены ведет этот куратор (строки 15-26, T=19 - Смена, V=21 - Ник)
-    for ($i = 0; $i < count($rows); $i++) {
-        $logicRow = $i + 1;
-        if ($logicRow >= 15 && $logicRow < 30) {
-            $row = $rows[$i];
-            if (isset($row[21], $row[19])) {
-                $nickInTableNorm = normalizeStaffNick($row[21]);
-                if ($nickInTableNorm !== '' && (strpos($nickInTableNorm, $curatorNickNorm) !== false || strpos($curatorNickNorm, $nickInTableNorm) !== false)) {
-                    $shift = trim($row[19]);
-                    if ($shift !== '') $curatorShifts[] = $shift;
-                }
+    // 1. Ищем, какую смены ведет этот куратор (по всей таблице, колонка V=21 - Ник, T=19 - Смена)
+    foreach ($rows as $row) {
+        if (isset($row[21], $row[19])) {
+            $nickInTableNorm = normalizeStaffNick($row[21]);
+            if ($nickInTableNorm !== '' && (strpos($nickInTableNorm, $curatorNickNorm) !== false || strpos($curatorNickNorm, $nickInTableNorm) !== false)) {
+                $shift = trim($row[19]);
+                if ($shift !== '') $curatorShifts[] = $shift;
             }
         }
     }
