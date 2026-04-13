@@ -20,11 +20,18 @@ if (!isset($_SESSION['role']) && $username !== 'Гость') {
 $current_role = $_SESSION['role'] ?? 'master';
 $avatar_url = $_SESSION['avatar_url'] ?? 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-// ФИКС КУРАТОРА: Если админ/куратор заходит, обновляем его время активности
+// Если пользователь залогинен, обновляем его время активности
 if (isset($_SESSION['username'])) {
     try {
-        $stmtLastSeen = $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE username = ?");
-        $stmtLastSeen->execute([$_SESSION['username']]);
+        if (!empty($_SESSION['discord_id'])) {
+            // Самый надежный способ - по Discord ID
+            $stmtLastSeen = $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE discord_id = ?");
+            $stmtLastSeen->execute([$_SESSION['discord_id']]);
+        } else {
+            // Если ID нет (старый вход), обновляем по нику
+            $stmtLastSeen = $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE username = ?");
+            $stmtLastSeen->execute([$_SESSION['username']]);
+        }
     } catch (Exception $e) {}
 }
 
