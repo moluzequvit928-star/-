@@ -1,21 +1,22 @@
 <?php
 session_start();
 require_once 'db.php';
+
+// УДАЛЕНИЕ СОБЫТИЯ (Только для Админа) - СРАЗУ В НАЧАЛЕ ФАЙЛА
+if (isset($_POST['action']) && $_POST['action'] === 'delete_event' && ($_SESSION['role'] ?? '') === 'admin') {
+    $eventId = (int)$_POST['event_id'];
+    $stmtDel = $pdo->prepare("DELETE FROM staff_events WHERE id = ?");
+    $stmtDel->execute([$eventId]);
+    header("Location: admin_stats.php");
+    exit;
+}
+
 require_once 'user_header.php';
 require_once 'staff_functions.php';
 
 // Только админ, гл. куратор и куратор могут видеть статистику
 if ($current_role !== 'admin' && $current_role !== 'curator' && $current_role !== 'chief') {
     header('Location: index.php');
-    exit;
-}
-
-// УДАЛЕНИЕ СОБЫТИЯ (Только для Админа)
-if (isset($_POST['action']) && $_POST['action'] === 'delete_event' && $current_role === 'admin') {
-    $eventId = (int)$_POST['event_id'];
-    $stmtDel = $pdo->prepare("DELETE FROM staff_events WHERE id = ?");
-    $stmtDel->execute([$eventId]);
-    header("Location: admin_stats.php");
     exit;
 }
 
