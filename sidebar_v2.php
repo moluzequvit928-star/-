@@ -14,8 +14,10 @@ if (!isset($sidebarPendingCount)) {
         $sidebarPendingCount = 0;
     }
 }
+//SIDEBAR VERSION 2.2 - ROLE FIX
+$role = $_SESSION['role'] ?? 'master';
 ?>
-<!-- SIDEBAR VERSION 2.1 - FIX MISSING ITEMS -->
+<!-- SIDEBAR VERSION 2.2 - NO MORE DISAPPEARING -->
 <aside class="sidebar glass">
     <div class="logo">
         <h2 style="letter-spacing: 1px;">Панель </h2>
@@ -23,7 +25,7 @@ if (!isset($sidebarPendingCount)) {
     <nav class="menu">
         <a href="index.php" class="menu-item <?= $current_page === 'index.php' || $current_page === '' ? 'active' : '' ?>">Главная</a>
         
-        <?php if (isset($current_role) && $current_role === 'admin'): ?>
+        <?php if ($role === 'admin'): ?>
             <a href="admin_stats.php" class="menu-item <?= $current_page === 'admin_stats.php' ? 'active' : '' ?>">Статистика</a>
             <a href="users_manage.php" class="menu-item <?= $current_page === 'users_manage.php' ? 'active' : '' ?>" style="display: flex; justify-content: space-between; align-items: center;">
                 <span>Пользователи</span>
@@ -39,7 +41,7 @@ if (!isset($sidebarPendingCount)) {
             </a>
         <?php endif; ?>
 
-        <?php if (isset($current_role) && ($current_role === 'admin' || $current_role === 'curator')): ?>
+        <?php if ($role === 'admin' || $role === 'curator'): ?>
             <a href="reattestation.php" class="menu-item <?= $current_page === 'reattestation.php' ? 'active' : '' ?>">Переаттестация</a>
             <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив переаттестаций</a>
             <a href="check_reports.php" class="menu-item <?= $current_page === 'check_reports.php' ? 'active' : '' ?>"
@@ -52,7 +54,7 @@ if (!isset($sidebarPendingCount)) {
             </a>
         <?php endif; ?>
 
-        <?php if (isset($current_role) && $current_role === 'master'): ?>
+        <?php if ($role === 'master'): ?>
             <a href="master_info.php" class="menu-item <?= $current_page === 'master_info.php' ? 'active' : '' ?>">Информация</a>
         <?php endif; ?>
 

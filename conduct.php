@@ -231,7 +231,7 @@ $questions = [
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="dashboard-container">
-        <?php require_once 'sidebar.php'; ?>
+        <?php require_once 'sidebar_v2.php'; ?>
 
         <main class="main-content">
             <header class="header glass">
