@@ -73,19 +73,21 @@ function getMasterNicksForCurator($curatorNick) {
 
     if (empty($curatorShifts)) return [];
 
+    // 2. Ищем всех мастеров в этих сменах (колонки T=19, V=21)
     $masterNicks = [];
     $lastSeenShift = '';
-
-    // 2. Ищем всех мастеров в этих сменах (колонки T=19, V=21)
     foreach ($rows as $row) {
-        // Запоминаем смену, если она указана
-        $shiftInRow = trim($row[19] ?? '');
-        if ($shiftInRow !== '') $lastSeenShift = $shiftInRow;
+        // Если в текущей строке указана новая смена - запоминаем её
+        $shiftInRow = isset($row[19]) ? trim($row[19]) : '';
+        if ($shiftInRow !== '') {
+            $lastSeenShift = $shiftInRow;
+        }
 
         if (isset($row[21])) {
             $role = mb_strtolower(trim($row[20] ?? ''));
             // Проверяем роль (мастер или саппорт)
             if (strpos($role, 'мастер') !== false || strpos($role, 'саппорт') !== false) {
+                // Если текущая (или унаследованная) смена совпадает со сменой куратора
                 if (in_array($lastSeenShift, $curatorShifts, true)) {
                     $masterNick = trim($row[21]);
                     if ($masterNick !== '') $masterNicks[] = $masterNick;
