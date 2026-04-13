@@ -15,12 +15,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user) {
             if ($user['password'] === $password) {
-                $_SESSION['user_logged_in'] = true;
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['discord_id'] = $user['discord_id'];
-                $_SESSION['role'] = $user['role'];
-                header('Location: index.php');
-                exit;
+                if (isset($user['is_banned']) && $user['is_banned'] == 1) {
+                    $error = 'Ваш аккаунт заблокирован! Доступ запрещен.';
+                } else {
+                    $_SESSION['user_logged_in'] = true;
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['discord_id'] = $user['discord_id'];
+                    $_SESSION['role'] = $user['role'];
+                    header('Location: index.php');
+                    exit;
+                }
             } else {
                 $error = 'Неверный логин или пароль';
             }
