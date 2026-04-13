@@ -1,0 +1,22 @@
+# Библиотеки Node.js (их хостинг установит сам)
+node_modules/
+
+# Папка с загруженными скриншотами (не нужно хранить в коде)
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+!favicon_futurama_staff_1776084855108.png
+
+# Временные файлы PHP и логи
+*.log
+add_ban_col.php
+force_dump.php
+debug_*.php
+init_stats_db.php
+repair_history.php
+
+# Локальные базы данных (если есть)
+users.json

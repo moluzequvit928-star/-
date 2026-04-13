@@ -275,7 +275,13 @@ body {
     font-weight: 500;
 }
 
-.q-badge {\n    padding: 0.25rem 0.5rem;\n    border-radius: 4px;\n    font-size: 0.75rem;\n    font-weight: 600;\n    color: white;\n}
+.q-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+}
 
 /* ===================== */
 /* MOBILE RESPONSIVE     */
