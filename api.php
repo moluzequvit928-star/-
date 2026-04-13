@@ -138,20 +138,24 @@ if ($action === 'master_details') {
     $myNick = normalizeText($_SESSION['username']);
     $myShift = '';
     $curator = 'Не назначен';
+    $lastSeen = '';
 
-    // Сначала ищем смену мастера
+    // 1. Ищем смену мастера (идем по порядку и запоминаем последнюю смену)
     foreach ($rows as $row) {
+        $row_shift = trim((string)($row[19] ?? ''));
+        if ($row_shift !== '') $lastSeen = $row_shift;
+
         if (isset($row[21]) && normalizeText($row[21]) === $myNick) {
-            $myShift = trim((string)($row[19] ?? ''));
+            $myShift = $lastSeen;
             break;
         }
     }
 
-    // Если смена найдена, ищем куратора этой смены в блоке кураторов (строки 15-24)
+    // 2. Если смена найдена, ищем куратора этой смены (в блоке кураторов 15-25 строчки)
     if ($myShift !== '') {
         for ($i = 0; $i < count($rows); $i++) {
             $logicRow = $i + 1;
-            if ($logicRow >= 15 && $logicRow <= 25) {
+            if ($logicRow >= 15 && $logicRow <= 26) {
                 $row = $rows[$i];
                 $shift = trim((string)($row[19] ?? ''));
                 if ($shift === $myShift && isset($row[21])) {
