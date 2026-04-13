@@ -73,9 +73,15 @@ function syncStaffStats($pdo) {
                 $stmtCache = $pdo->prepare("REPLACE INTO staff_current_cache (nickname, discord_id, last_seen) VALUES (?, ?, ?)");
                 $stmtCache->execute([$nick, $discordId, $now]);
             } else {
-                // Ник есть — просто обновляем время последнего визита в кэше
-                $stmtUpd = $pdo->prepare("UPDATE staff_current_cache SET last_seen = ? WHERE nickname = ?");
-                $stmtUpd->execute([$now, $nick]);
+                // Ник есть — обновляем время и ПРОВЕРЯЕМ ID (вдруг его вписали позже)
+                $stmtUpd = $pdo->prepare("UPDATE staff_current_cache SET last_seen = ?, discord_id = CASE WHEN discord_id = '' OR discord_id IS NULL THEN ? ELSE discord_id END WHERE nickname = ?");
+                $stmtUpd->execute([$now, $discordId, $nick]);
+                
+                // Если в кэше ID был пустой, а сейчас пришел не пустой — принудительно обновляем все равно
+                if (!empty($discordId)) {
+                    $stmtForceUpd = $pdo->prepare("UPDATE staff_current_cache SET discord_id = ? WHERE nickname = ? AND discord_id != ?");
+                    $stmtForceUpd->execute([$discordId, $nick, $discordId]);
+                }
             }
         }
     }
