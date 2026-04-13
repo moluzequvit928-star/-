@@ -89,6 +89,7 @@ if ($action === 'reattestation_queue') {
             'id' => $id,
             'nickname' => $nick,
             'curator' => $curator,
+            'date' => trim((string)($row[5] ?? '')), // Колонка F (дата)
             'attempt_count' => ($failCount + 1) . ' / 3'
         ];
     }
