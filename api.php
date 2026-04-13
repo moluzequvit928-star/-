@@ -136,6 +136,29 @@ foreach ($rows as $row) {
         }
     }
 }
+// 3. ОБНОВЛЕНИЕ СТАТУСА ОТЧЕТА (Для кураторов/админов)
+if ($action === 'update_report_status') {
+    $role = $_SESSION['role'] ?? 'master';
+    if ($role !== 'admin' && $role !== 'curator' && $role !== 'chief') {
+        echo json_encode(['success' => false, 'message' => 'Недостаточно прав.']);
+        exit;
+    }
+
+    $reportId = (int)($_POST['report_id'] ?? 0);
+    $newStatus = trim($_POST['status'] ?? '');
+
+    if (!$reportId || !in_array($newStatus, ['approved', 'rejected'])) {
+        echo json_encode(['success' => false, 'message' => 'Неверные данные.']);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("UPDATE reports SET status = ? WHERE id = ?");
+    $stmt->execute([$newStatus, $reportId]);
+
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // 4. ДЕТАЛИ МАСТЕРА (КУРАТОР)
 if ($action === 'master_details') {
     $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));

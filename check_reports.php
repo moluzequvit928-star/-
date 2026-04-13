@@ -17,17 +17,8 @@ if ($role !== 'admin' && $role !== 'curator') {
 require_once 'user_header.php';
 require_once 'staff_functions.php';
 
-// Обработка действий (Одобрить/Отклонить)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['report_id'])) {
-    $report_id = (int)$_POST['report_id'];
-    $new_status = $_POST['action'] === 'approve' ? 'approved' : 'rejected';
-    
-    $stmt = $pdo->prepare("UPDATE reports SET status = ? WHERE id = ?");
-    $stmt->execute([$new_status, $report_id]);
-    
-    header("Location: check_reports.php");
-    exit;
-}
+// Обработка действий больше не нужна здесь, так как мы перешли на API
+
 
 // По умолчанию берем все
 $whereClause = "";
@@ -156,7 +147,7 @@ function getStatusBadge($status) {
                             <tbody>
                                 <?php if (count($reports) > 0): ?>
                                     <?php foreach ($reports as $report): ?>
-                                        <tr>
+                                        <tr id="report-row-<?= $report['id'] ?>" style="transition: opacity 0.3s ease, transform 0.3s ease;">
                                             <td style="font-weight: 500; color: #E2E8F0;"><?= htmlspecialchars($report['master_name']) ?></td>
                                             <td style="color: #94A3B8; font-size: 0.9rem;"><?= date('d.m.Y H:i', strtotime($report['created_at'])) ?></td>
                                             <td style="color: #E2E8F0;">
@@ -168,26 +159,25 @@ function getStatusBadge($status) {
                                             <td>
                                                 <a href="#" onclick="openModal('uploads/<?= htmlspecialchars($report['screenshot_path']) ?>'); return false;" style="color: #6366F1; text-decoration: none;">Посмотреть ↗</a>
                                             </td>
-                                            <td><?= getStatusBadge($report['status']) ?></td>
+                                            <td id="status-cell-<?= $report['id'] ?>"><?= getStatusBadge($report['status']) ?></td>
                                             <td style="color: #94A3B8; font-size: 0.9rem; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?= htmlspecialchars($report['comment']) ?>">
                                                 <?= $report['comment'] ? htmlspecialchars($report['comment']) : '-' ?>
                                             </td>
-                                            <td>
+                                            <td id="actions-cell-<?= $report['id'] ?>">
                                                 <?php if ($report['status'] === 'pending'): ?>
-                                                    <form method="POST" style="display: flex; gap: 0.5rem;">
-                                                        <input type="hidden" name="report_id" value="<?= $report['id'] ?>">
-                                                        <button type="submit" name="action" value="approve" class="action-btn btn-approve">Одобрить</button>
-                                                        <button type="submit" name="action" value="reject" class="action-btn btn-reject">Отклонить</button>
-                                                    </form>
+                                                    <div style="display: flex; gap: 0.5rem;">
+                                                        <button onclick="updateReportStatus(<?= $report['id'] ?>, 'approved', this)" class="action-btn btn-approve">Одобрить</button>
+                                                        <button onclick="updateReportStatus(<?= $report['id'] ?>, 'rejected', this)" class="action-btn btn-reject">Отклонить</button>
+                                                    </div>
                                                 <?php else: ?>
-                                                    <span style="color: var(--text-muted); font-size: 0.85rem;">Обновлено</span>
+                                                    <span style="color: var(--text-muted); font-size: 0.85rem;">Завершено</span>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Отчетов пока нет.</td>
+                                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Отчетов пока нет.</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
@@ -205,19 +195,63 @@ function getStatusBadge($status) {
     </div>
 
     <script>
-        function openModal(src) {
-            document.getElementById('modal-img').src = src;
-            document.getElementById('image-modal').style.display = 'flex';
+        function updateReportStatus(reportId, status, btn) {
+            const formData = new FormData();
+            formData.append('report_id', reportId);
+            formData.append('status', status);
+
+            const row = document.getElementById('report-row-' + reportId);
+            const buttons = row.querySelectorAll('button');
+            buttons.forEach(b => b.disabled = true);
+            btn.innerText = '⌛...';
+
+            fetch('api.php?action=update_report_status', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Анимация исчезновения
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(20px)';
+                    setTimeout(() => {
+                        row.remove();
+                        
+                        // Проверяем, остались ли еще отчеты
+                        const tbody = document.querySelector('.report-table tbody');
+                        if (tbody.children.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">Отчетов пока нет.</td></tr>';
+                        }
+
+                        // Обновляем счетчик в сайдбаре
+                        const sidebarLinks = document.querySelectorAll('.sidebar .menu-item');
+                        sidebarLinks.forEach(link => {
+                            if (link.innerText.includes('Проверка отчетов')) {
+                                const badge = link.querySelector('span:last-child');
+                                if (badge && !isNaN(parseInt(badge.innerText))) {
+                                    let count = parseInt(badge.innerText);
+                                    if (count > 1) {
+                                        badge.innerText = count - 1;
+                                    } else {
+                                        badge.remove();
+                                    }
+                                }
+                            }
+                        });
+                    }, 300);
+                } else {
+                    alert('Ошибка: ' + (data.message || 'неизвестная ошибка'));
+                    buttons.forEach(b => b.disabled = false);
+                    btn.innerText = status === 'approved' ? 'Одобрить' : 'Отклонить';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Сетевая ошибка при обновлении статуса.');
+                buttons.forEach(b => b.disabled = false);
+            });
         }
-        function closeModal() {
-            document.getElementById('image-modal').style.display = 'none';
-        }
-        document.getElementById('image-modal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
-        });
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeModal();
-        });
     </script>
     <script>
         const burgerBtn = document.getElementById('burgerBtn');

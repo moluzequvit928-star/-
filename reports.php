@@ -11,6 +11,11 @@ require_once 'user_header.php';
 $message = '';
 $messageType = '';
 
+if (isset($_GET['status']) && $_GET['status'] === 'success') {
+    $message = 'Отчет успешно сохранен!';
+    $messageType = 'success';
+}
+
 // Обработка формы
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $candidate = trim($_POST['candidate'] ?? '');
@@ -56,8 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, candidate_nickname, invited, screenshot_path, comment) VALUES (?, ?, ?, ?, ?, ?)");
             if ($stmt->execute([$master_name, $candidate, $candidate_nickname, $invited, $newFileName, $comment])) {
-                $message = 'Отчет успешно сохранен!';
-                $messageType = 'success';
+                header('Location: reports.php?status=success');
+                exit;
             } else {
                 $message = 'Ошибка сохранения в базу данных.';
                 $messageType = 'error';
@@ -65,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (PDOException $e) {
             $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, invited, screenshot_path, comment) VALUES (?, ?, ?, ?, ?)");
             if ($stmt->execute([$master_name, $candidate, $invited, $newFileName, $comment])) {
-                $message = 'Отчет успешно сохранен!';
-                $messageType = 'success';
+                header('Location: reports.php?status=success');
+                exit;
             } else {
                 $message = 'Ошибка сохранения в базу данных.';
                 $messageType = 'error';
