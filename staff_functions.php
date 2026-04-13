@@ -18,8 +18,8 @@ function fetchStaffRows($gid = '1970062457') {
     if (!is_dir($cacheDir)) @mkdir($cacheDir, 0777, true);
     $cacheFile = $cacheDir . '/sheet_cache_' . md5($url) . '.csv';
     
-    // Кеш на 5 минут
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 300)) {
+    // Кеш на 3 минуты (уменьшим для актуальности)
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < 180)) {
         $csvData = file_get_contents($cacheFile);
     } else {
         $csvData = @file_get_contents($url);
@@ -52,10 +52,10 @@ function getMasterNicksForCurator($curatorNick) {
     $curatorNick = mb_strtolower(trim($curatorNick));
     $curatorShifts = [];
     
-    // 1. Ищем, какие смены ведет этот куратор (строки 15-24, T=19 - Смена, V=21 - Ник)
+    // 1. Ищем, какие смены ведет этот куратор (строки 15-26, T=19 - Смена, V=21 - Ник)
     for ($i = 0; $i < count($rows); $i++) {
         $logicRow = $i + 1;
-        if ($logicRow >= 15 && $logicRow < 25) {
+        if ($logicRow >= 15 && $logicRow < 30) {
             $row = $rows[$i];
             if (isset($row[21], $row[19])) {
                 $nickInTable = mb_strtolower(trim($row[21]));
@@ -70,15 +70,19 @@ function getMasterNicksForCurator($curatorNick) {
     if (empty($curatorShifts)) return [];
 
     $masterNicks = [];
+    $lastSeenShift = '';
+
     // 2. Ищем всех мастеров в этих сменах (колонки T=19, V=21)
     foreach ($rows as $row) {
-        if (isset($row[19], $row[20], $row[21])) {
-            $role = mb_strtolower(trim($row[20]));
-            if (strpos($role, 'мастер') !== false) {
-                $shift = trim($row[19]);
-                // Если смена пустая, но это мастер, пробуем взять смену из предыдущих строк (объединенные ячейки) - 
-                // но в данном случае мы просто проверяем соответствие смены куратора
-                if (in_array($shift, $curatorShifts, true)) {
+        // Запоминаем смену, если она указана
+        $shiftInRow = trim($row[19] ?? '');
+        if ($shiftInRow !== '') $lastSeenShift = $shiftInRow;
+
+        if (isset($row[21])) {
+            $role = mb_strtolower(trim($row[20] ?? ''));
+            // Проверяем роль (мастер или саппорт)
+            if (strpos($role, 'мастер') !== false || strpos($role, 'саппорт') !== false) {
+                if (in_array($lastSeenShift, $curatorShifts, true)) {
                     $masterNick = trim($row[21]);
                     if ($masterNick !== '') $masterNicks[] = $masterNick;
                 }
@@ -88,3 +92,4 @@ function getMasterNicksForCurator($curatorNick) {
 
     return array_unique($masterNicks);
 }
+?>
