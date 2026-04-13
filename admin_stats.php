@@ -124,6 +124,21 @@ function syncStaffStats($pdo) {
 // Запускаем синхронизацию
 syncStaffStats($pdo);
 
+// РАЗОВАЯ ЛЕЧИЛКА ДЛЯ СУЩЕСТВУЮЩИХ ЗАПИСЕЙ
+// Если есть старые записи без ID — пробуем их вылечить через таблицу отчетов
+try {
+    $stmtHeal = $pdo->query("SELECT id, nickname FROM staff_events WHERE discord_id = '' OR discord_id IS NULL");
+    $toHeal = $stmtHeal->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($toHeal as $hEvent) {
+        $stmtFId = $pdo->prepare("SELECT discord_id FROM reports WHERE master_name = ? AND discord_id != '' LIMIT 1");
+        $stmtFId->execute([$hEvent['nickname']]);
+        $foundId = $stmtFId->fetchColumn();
+        if ($foundId) {
+            $pdo->prepare("UPDATE staff_events SET discord_id = ? WHERE id = ?")->execute([$foundId, $hEvent['id']]);
+        }
+    }
+} catch (Exception $e) {}
+
 // Получаем статистику за текущую неделю
 $monday = date('Y-m-d', strtotime('monday this week'));
 $sunday = date('Y-m-d', strtotime('sunday this week'));
