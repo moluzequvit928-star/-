@@ -1,4 +1,6 @@
 <?php
+require_once 'db.php';
+
 // Получаем дискорд ID из сессии
 $discord_id = $_SESSION['discord_id'] ?? null;
 $username = $_SESSION['username'] ?? 'Гость';
@@ -51,7 +53,6 @@ if ($discord_id && $discord_id !== 'system' && is_numeric($discord_id)) {
 }
 
 // Глобальный расчет уведомлений для боковой панели
-require_once 'db.php';
 require_once 'staff_functions.php';
 
 $sidebarPendingCount = 0;
