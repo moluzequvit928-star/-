@@ -39,7 +39,10 @@ function loadCsvRows($url) {
     return $rows;
 }
 
-function normalizeText($text) { return mb_strtolower(trim((string)$text)); }
+function normalizeText($text) { 
+    $t = mb_strtolower(trim((string)$text));
+    return str_replace('_', '', $t); // Убираем подчеркивания для гибкого сравнения
+}
 
 $action = $_GET['action'] ?? '';
 
