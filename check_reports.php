@@ -137,17 +137,20 @@ function getStatusBadge($status) {
             </header>
             
             <section class="content">
-                <div style="font-size: 10px; color: #475569; margin-bottom: 5px;">Debug: Role: <?= $role ?>, Masters: <?= count($myMasters ?? []) ?></div>
                 <?php if ($role === 'curator' && !empty($myMasters)): ?>
-                <div class="card glass" style="margin-bottom: 2rem; border-left: 4px solid #A78BFA;">
+                <div class="card glass" style="margin-bottom: 2rem; border-left: 4px solid #A78BFA; grid-column: 1 / -1;">
                     <div class="card-header">
-                        <h3 style="font-size: 1.1rem; color: #A78BFA;">👥 Ваш курируемый состав</h3>
+                        <h3 style="font-size: 1.1rem; color: #A78BFA; display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-size: 1.4rem;">👥</span> Ваш курируемый состав
+                        </h3>
+                        <span class="status info" style="background: rgba(167, 139, 250, 0.1); color: #A78BFA; border: none;">Активен</span>
                     </div>
                     <div class="card-body" style="display: flex; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.5rem;">
                         <?php foreach ($myMasters as $mNick): ?>
-                            <span style="background: rgba(167, 139, 250, 0.1); color: #E2E8F0; padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid rgba(167, 139, 250, 0.2); font-size: 0.9rem; font-weight: 500;">
+                            <div style="background: rgba(167, 139, 250, 0.05); color: #F1F5F9; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.15); font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);"></div>
                                 <?= htmlspecialchars($mNick) ?>
-                            </span>
+                            </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
