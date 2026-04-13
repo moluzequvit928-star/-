@@ -54,15 +54,14 @@ function hasAnyRole(roleNames, variants) {
 }
 
 async function resolvePanelRoleFromDiscord(interaction) {
-    let panelRole = 'master';
     const guild = interaction.guild;
-    if (!guild) return panelRole;
+    if (!guild) return null;
 
     const interactionRoles = interaction.member?.roles;
-    if (!interactionRoles) return panelRole;
+    if (!interactionRoles) return null;
 
     const roleIds = Array.isArray(interactionRoles) ? interactionRoles : (interactionRoles.cache ? Array.from(interactionRoles.cache.keys()) : []);
-    if (roleIds.length === 0) return panelRole;
+    if (roleIds.length === 0) return null;
 
     await guild.roles.fetch();
     const roleNames = roleIds.map((id) => guild.roles.cache.get(id)?.name).filter(Boolean).map((name) => normalizeRoleName(name));
@@ -70,7 +69,8 @@ async function resolvePanelRoleFromDiscord(interaction) {
     if (hasAnyRole(roleNames, ['админ', 'администратор', 'admin', 'administrator'])) return 'admin';
     if (hasAnyRole(roleNames, ['главный куратор', 'гл. куратор', 'куратор', 'curator', 'chief curator'])) return 'curator';
     if (hasAnyRole(roleNames, ['мастер', 'master'])) return 'master';
-    return panelRole;
+    
+    return null; // Нет подходящих ролей
 }
 
 const commands = [
@@ -131,6 +131,12 @@ client.on('interactionCreate', async interaction => {
             console.log(`[DEBUG] users.json загружен.`);
             const panelRole = await resolvePanelRoleFromDiscord(interaction);
             console.log(`[DEBUG] Роль определена: ${panelRole}`);
+
+            if (!panelRole) {
+                return await interaction.editReply({
+                    content: '❌ **Доступ запрещен!**\nУ вас нет необходимых ролей персонала (Мастер, Куратор или Администратор) на этом сервере.'
+                });
+            }
 
             let login = interaction.user.username.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
             if (login.length < 3) login = login + interaction.user.id.substring(0, 4);
