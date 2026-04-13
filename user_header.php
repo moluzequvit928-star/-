@@ -60,3 +60,10 @@ if ($current_role === 'admin') {
     }
 }
 ?>
+<script>
+    // Инициализация темы до отрисовки основной части
+    (function() {
+        const savedTheme = localStorage.getItem('site_theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+</script>

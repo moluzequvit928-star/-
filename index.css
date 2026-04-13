@@ -1,14 +1,33 @@
 :root {
+    /* ТЕКУЩАЯ ТЕМА (ПО УМОЛЧАНИЮ - ТЕМНО-СИНЯЯ) */
     --bg-main: #0B0F19;
-    /* Very deep dark blue/black */
     --bg-secondary: rgba(20, 27, 45, 0.6);
+    --bg-sidebar: rgba(11, 15, 25, 0.8);
     --text-main: #F8FAFC;
     --text-muted: #94A3B8;
     --accent: #6366F1;
-    /* Indigo */
     --accent-hover: #4F46E5;
     --border-color: rgba(255, 255, 255, 0.08);
     --warning: #F59E0B;
+}
+
+[data-theme="black"] {
+    --bg-main: #000000;
+    --bg-secondary: rgba(20, 20, 20, 0.8);
+    --bg-sidebar: #050505;
+    --text-main: #FFFFFF;
+    --text-muted: #A0A0A0;
+    --border-color: #222222;
+}
+
+[data-theme="light"] {
+    --bg-main: #F1F5F9;
+    --bg-secondary: rgba(255, 255, 255, 0.8);
+    --bg-sidebar: #FFFFFF;
+    --text-main: #0F172A;
+    --text-muted: #64748B;
+    --border-color: #E2E8F0;
+    --warning: #D97706;
 }
 
 * {

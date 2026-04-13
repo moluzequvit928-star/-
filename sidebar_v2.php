@@ -66,5 +66,6 @@ $role = $_SESSION['role'] ?? 'master';
 
         <div class="menu-section-title">Работа</div>
         <a href="reports.php" class="menu-item <?= $current_page === 'reports.php' ? 'active' : '' ?>">Отчеты по наборам</a>
+        <a href="settings.php" class="menu-item <?= $current_page === 'settings.php' ? 'active' : '' ?>">Настройки ⚙️</a>
     </nav>
 </aside>
