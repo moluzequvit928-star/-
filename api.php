@@ -53,7 +53,7 @@ function normalizeText($text) { return mb_strtolower(trim((string)$text)); }
 // ЛОГИКА ОЧЕРЕДИ
 if (isset($_GET['action']) && $_GET['action'] === 'reattestation_queue') {
     global $pdo;
-    $url = getGoogleSheetCsvUrl('0'); // Главный лист или лист очереди
+    $url = getGoogleSheetCsvUrl('822458528'); // ЛИСТ ПЕРЕАТТЕСТАЦИИ (GID 822458528)
     $rows = loadCsvRows($url);
     $items = [];
     $curatorFilterRaw = $_GET['curator'] ?? ($_SESSION['username'] ?? '');
