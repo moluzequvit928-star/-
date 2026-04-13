@@ -137,7 +137,7 @@ function getStatusBadge($status) {
             </header>
             
             <section class="content">
-                <!-- DEBUG: Role: <?= $role ?>, Masters: <?= count($myMasters ?? []) ?> -->
+                <div style="font-size: 10px; color: #475569; margin-bottom: 5px;">Debug: Role: <?= $role ?>, Masters: <?= count($myMasters ?? []) ?></div>
                 <?php if ($role === 'curator' && !empty($myMasters)): ?>
                 <div class="card glass" style="margin-bottom: 2rem; border-left: 4px solid #A78BFA;">
                     <div class="card-header">

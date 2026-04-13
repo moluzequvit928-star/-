@@ -46,7 +46,8 @@ function fetchStaffRows($gid = '1970062457') {
  */
 function normalizeStaffNick($text) {
     $t = mb_strtolower(trim((string)$text));
-    return str_replace('_', '', $t);
+    // Удаляем вообще всё, кроме букв и цифр для максимально точного сравнения
+    return preg_replace('/[\W_]/u', '', $t);
 }
 
 /**
