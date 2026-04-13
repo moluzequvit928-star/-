@@ -173,12 +173,13 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </td>
                                     <td>
                                         <?php 
+                                            $uRole = $u['role'] ?? 'master';
                                             $lbl = 'Мастер';
-                                            if ($role === 'admin') $lbl = 'Админ';
-                                            elseif ($role === 'chief') $lbl = 'Гл. Куратор';
-                                            elseif ($role === 'curator') $lbl = 'Куратор';
+                                            if ($uRole === 'admin') $lbl = 'Админ';
+                                            elseif ($uRole === 'chief') $lbl = 'Гл. Куратор';
+                                            elseif ($uRole === 'curator') $lbl = 'Куратор';
                                         ?>
-                                        <span class="role-badge <?= $role === 'admin' ? 'role-admin' : ($role === 'master' ? 'role-master' : 'role-curator') ?>">
+                                        <span class="role-badge <?= $uRole === 'admin' ? 'role-admin' : ($uRole === 'master' ? 'role-master' : 'role-curator') ?>">
                                             <?= $lbl ?>
                                         </span>
                                     </td>
