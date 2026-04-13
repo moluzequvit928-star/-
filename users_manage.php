@@ -159,27 +159,6 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php endif; ?>
 
                 <div class="card glass" style="grid-column: 1 / -1;">
-                    <div class="card-header"><h3>➕ Добавить пользователя</h3></div>
-                    <div class="card-body">
-                        <form method="POST">
-                            <input type="hidden" name="action" value="add">
-                            <div class="form-row">
-                                <div class="form-field"><label>Логин</label><input type="text" name="new_login" class="form-input" required></div>
-                                <div class="form-field"><label>Пароль</label><input type="text" name="new_password" class="form-input" required></div>
-                                <div class="form-field"><label>Роль</label>
-                                    <select name="new_role" class="form-select">
-                                        <option value="master">🎓 Саппорт</option>
-                                        <option value="curator">👁️ Куратор</option>
-                                        <option value="admin">👑 Админ</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn-add">Добавить</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card glass" style="grid-column: 1 / -1;">
                     <div class="card-header"><h3>👥 Список пользователей</h3></div>
                     <div class="card-body" style="overflow-x: auto;">
                         <table class="users-table">
