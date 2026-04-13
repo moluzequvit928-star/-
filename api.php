@@ -49,7 +49,12 @@ if ($action === 'reattestation_queue') {
     $url = getGoogleSheetCsvUrl('822458528'); 
     $rows = loadCsvRows($url);
     $items = [];
-    $curatorFilterRaw = $_GET['curator'] ?? ($_SESSION['username'] ?? '');
+    $curatorFilterRaw = $_GET['curator'] ?? '';
+    // Если ник не передан, и роль админ - показываем всех. Если куратор - только его.
+    if ($curatorFilterRaw === '') {
+        $userRole = $_SESSION['role'] ?? 'master';
+        $curatorFilterRaw = ($userRole === 'admin') ? 'all' : ($_SESSION['username'] ?? '');
+    }
     $filter = normalizeText($curatorFilterRaw);
 
     foreach ($rows as $idx => $row) {
