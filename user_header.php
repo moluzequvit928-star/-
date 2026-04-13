@@ -18,6 +18,14 @@ if (!isset($_SESSION['role']) && $username !== 'Гость') {
 $current_role = $_SESSION['role'] ?? 'master';
 $avatar_url = $_SESSION['avatar_url'] ?? 'https://cdn.discordapp.com/embed/avatars/0.png';
 
+// ФИКС КУРАТОРА: Если админ/куратор заходит, обновляем его время активности
+if (isset($_SESSION['username'])) {
+    try {
+        $stmtLastSeen = $pdo->prepare("UPDATE users SET last_seen = NOW() WHERE username = ?");
+        $stmtLastSeen->execute([$_SESSION['username']]);
+    } catch (Exception $e) {}
+}
+
 // Красивое название роли
 $role_names = [
     'admin' => 'Администратор',
