@@ -41,7 +41,7 @@ $role = $_SESSION['role'] ?? 'master';
             </a>
         <?php endif; ?>
 
-        <?php if ($role === 'admin' || $role === 'curator'): ?>
+        <?php if ($role === 'admin' || $role === 'curator' || $role === 'chief'): ?>
             <a href="reattestation.php" class="menu-item <?= $current_page === 'reattestation.php' ? 'active' : '' ?>">Переаттестация</a>
             <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив переаттестаций</a>
             <a href="check_reports.php" class="menu-item <?= $current_page === 'check_reports.php' ? 'active' : '' ?>"

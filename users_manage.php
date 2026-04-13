@@ -172,9 +172,14 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <?= htmlspecialchars($u['username']) ?>
                                     </td>
                                     <td>
-                                        <?php $role = $u['role'] ?? 'master'; ?>
-                                        <span class="role-badge <?= $role === 'admin' ? 'role-admin' : ($role === 'curator' ? 'role-curator' : 'role-master') ?>">
-                                            <?= $role === 'admin' ? 'Админ' : ($role === 'curator' ? 'Куратор' : 'Саппорт') ?>
+                                        <?php 
+                                            $lbl = 'Мастер';
+                                            if ($role === 'admin') $lbl = 'Админ';
+                                            elseif ($role === 'chief') $lbl = 'Гл. Куратор';
+                                            elseif ($role === 'curator') $lbl = 'Куратор';
+                                        ?>
+                                        <span class="role-badge <?= $role === 'admin' ? 'role-admin' : ($role === 'master' ? 'role-master' : 'role-curator') ?>">
+                                            <?= $lbl ?>
                                         </span>
                                     </td>
                                     <td style="color: #64748B; font-family: monospace;"><?= htmlspecialchars($u['discord_id'] ?? '—') ?></td>

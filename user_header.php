@@ -21,6 +21,7 @@ $avatar_url = $_SESSION['avatar_url'] ?? 'https://cdn.discordapp.com/embed/avata
 // Красивое название роли
 $role_names = [
     'admin' => 'Администратор',
+    'chief' => 'Гл. Куратор',
     'curator' => 'Куратор',
     'master' => 'Мастер'
 ];
