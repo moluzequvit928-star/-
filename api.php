@@ -549,37 +549,43 @@ function handleSetReattestationResult(): void
 
 function handleReattestationQueue(): void
 {
-    // ЖЕСТКО: Твоя таблица и твоя вкладка переаттестации
+    global $pdo;
     $sheetId = '1w2r_C3R7kh5CDvlehOHOjd3DPnvCMBQ9SnXZnB6t754';
     $gid = '822458528';
     $url = "https://docs.google.com/spreadsheets/d/{$sheetId}/export?format=csv&gid={$gid}";
 
     $rows = loadCsvRows($url);
-    if (empty($rows)) {
-        echo json_encode(['success' => false, 'error' => 'Лист переаттестации пуст']);
-        return;
-    }
-
-    $resultData = collectReattestationEntries($rows);
-    $entries = $resultData['entries'];
-    $activeCols = $resultData['cols'];
-
-    $curatorFilterRaw = trim((string) ($_GET['curator'] ?? ($_SESSION['username'] ?? '')));
-    $curatorFilter = normalizeText($curatorFilterRaw);
-    $showAll = ($curatorFilterRaw === 'all');
+    $results = collectReattestationEntries($rows);
     $items = [];
+    $curatorFilterRaw = $_GET['curator'] ?? ($_SESSION['username'] ?? '');
 
-    foreach ($entries as $data) {
+    foreach ($results['entries'] as $data) {
         $discordId = $data['discord_id'];
         $curator = $data['curator'];
         $result = $data['result'];
-        $date = $data['date'];
 
-        $isMatch = $showAll || ($curatorFilter === '');
-        if (!$isMatch) {
+        // --- ФИЛЬТРАЦИЯ ПО БАЗЕ ДАННЫХ ---
+        $stmt = $pdo->prepare("SELECT result FROM reattestations WHERE discord_id = ? ORDER BY created_at DESC");
+        $stmt->execute([$discordId]);
+        $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $failCount = 0;
+        $alreadyPassed = false;
+        foreach ($history as $h) {
+            if ($h['result'] === 'сдал') { $alreadyPassed = true; break; }
+            if ($h['result'] === 'не сдал') $failCount++;
+        }
+
+        if ($alreadyPassed || $failCount >= 3) continue;
+        // --------------------------------
+
+        $isMatch = false;
+        if ($curatorFilterRaw === '' || $curatorFilterRaw === 'all') {
+            $isMatch = true;
+        } else {
+            $curatorFilter = mb_strtolower(trim($curatorFilterRaw));
             $rowCuratorClean = preg_replace('/[^a-z0-9]/i', '', normalizeText($curator));
             $filterClean = preg_replace('/[^a-z0-9]/i', '', $curatorFilter);
-            
             if ($rowCuratorClean !== '' && (strpos($rowCuratorClean, $filterClean) !== false || strpos($filterClean, $rowCuratorClean) !== false)) {
                 $isMatch = true;
             }
@@ -587,14 +593,8 @@ function handleReattestationQueue(): void
 
         if (!$isMatch) continue;
 
-        // По ТЗ: если поле "Сдал/Не сдал" не пустое, значит переаттестация уже проведена.
+        // Фильтр Google Таблицы: если там уже стоит результат, скрываем
         $normalizedResult = normalizeText($result);
-        if ($normalizedResult !== '' && $normalizedResult !== '-' && $normalizedResult !== '—') {
-            continue;
-        }
-
-        $dateState = 'unknown';
-        $daysDiff = null;
         $targetDate = parseRuDate($date);
         if ($targetDate instanceof DateTime) {
             $today = new DateTime('today');
