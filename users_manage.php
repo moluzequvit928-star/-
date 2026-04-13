@@ -163,7 +163,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="card-body" style="overflow-x: auto;">
                         <table class="users-table">
                             <thead>
-                                <tr><th>Логин</th><th>Роль</th><th>Discord ID</th><th>Статус</th><th>Действия</th></tr>
+                                <tr><th>Логин</th><th>Роль</th><th>Discord ID</th><th>Был в сети</th><th>Действия</th></tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($users as $u): ?>
@@ -184,14 +184,26 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </span>
                                     </td>
                                     <td style="color: #64748B; font-family: monospace;"><?= htmlspecialchars($u['discord_id'] ?? '—') ?></td>
-                                    <td>
+                                    <td style="color: #94A3B8; font-size: 0.9rem;">
                                         <?php if ($u['is_banned']): ?>
                                             <span style="color: #EF4444; font-size: 0.8rem; font-weight: 600;">🚫 ЗАБАНЕН</span>
                                         <?php else: ?>
-                                            <span style="color: #10B981; font-size: 0.8rem; font-weight: 600;">✅ АКТИВЕН</span>
+                                            <?php 
+                                                if (!empty($u['last_seen'])) {
+                                                    $ls = strtotime($u['last_seen']);
+                                                    $diff = time() - $ls;
+                                                    if ($diff < 60) echo '<span style="color: #10B981; font-weight: 600;">В сети</span>';
+                                                    elseif ($diff < 3600) echo floor($diff/60) . ' мин. назад';
+                                                    elseif ($diff < 86400) echo floor($diff/3600) . ' ч. назад';
+                                                    else echo date('d.m.Y', $ls);
+                                                } else {
+                                                    echo '-';
+                                                }
+                                            ?>
                                         <?php endif; ?>
                                     </td>
-                                    <td style="display: flex; gap: 0.5rem;">
+                                    <td>
+                                        <div style="display: flex; gap: 0.5rem;">
                                         <?php if ($u['username'] !== 'admin' && $u['username'] !== $_SESSION['username']): ?>
                                             <form method="POST" style="display:inline;">
                                                 <input type="hidden" name="action" value="toggle_ban">
