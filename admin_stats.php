@@ -10,6 +10,15 @@ if ($current_role !== 'admin' && $current_role !== 'curator' && $current_role !=
     exit;
 }
 
+// УДАЛЕНИЕ СОБЫТИЯ (Только для Админа)
+if (isset($_POST['action']) && $_POST['action'] === 'delete_event' && $current_role === 'admin') {
+    $eventId = (int)$_POST['event_id'];
+    $stmtDel = $pdo->prepare("DELETE FROM staff_events WHERE id = ?");
+    $stmtDel->execute([$eventId]);
+    header("Location: admin_stats.php");
+    exit;
+}
+
 // Ранги строк, которые нужно мониторить (блоки смен)
 $targetRanges = [
     [12, 27], [32, 47], [52, 67], [72, 86], [91, 106],
@@ -272,6 +281,7 @@ $recentEvents = $stmtEvents->fetchAll(PDO::FETCH_ASSOC);
                                     <th>Событие</th>
                                     <th>Пользователь</th>
                                     <th>Discord ID</th>
+                                    <?php if ($current_role === 'admin'): ?><th>Действ.</th><?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody>
@@ -288,6 +298,15 @@ $recentEvents = $stmtEvents->fetchAll(PDO::FETCH_ASSOC);
                                             </td>
                                             <td style="font-weight: 600; color: #E2E8F0;"><?= htmlspecialchars($ev['nickname']) ?></td>
                                             <td style="font-family: monospace; color: #64748B; font-size: 0.85rem;"><?= htmlspecialchars($ev['discord_id']) ?></td>
+                                            <?php if ($current_role === 'admin'): ?>
+                                            <td>
+                                                <form method="POST" onsubmit="return confirm('Удалить эту запись из журнала?');">
+                                                    <input type="hidden" name="action" value="delete_event">
+                                                    <input type="hidden" name="event_id" value="<?= $ev['id'] ?>">
+                                                    <button type="submit" style="background: none; border: none; color: #EF4444; cursor: pointer; padding: 2px 5px; font-size: 0.9rem;" title="Удалить запись">🗑️</button>
+                                                </form>
+                                            </td>
+                                            <?php endif; ?>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
