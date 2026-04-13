@@ -42,6 +42,14 @@ function fetchStaffRows($gid = '1970062457') {
 }
 
 /**
+ * Общая нормализация ников (удаление подчеркиваний и пробелов)
+ */
+function normalizeStaffNick($text) {
+    $t = mb_strtolower(trim((string)$text));
+    return str_replace('_', '', $t);
+}
+
+/**
  * Возвращает список никнеймов мастеров, которые закреплены за куратором
  */
 function getMasterNicksForCurator($curatorNick) {
@@ -49,7 +57,7 @@ function getMasterNicksForCurator($curatorNick) {
     $rows = fetchStaffRows();
     if (empty($rows)) return [];
 
-    $curatorNick = mb_strtolower(trim($curatorNick));
+    $curatorNickNorm = normalizeStaffNick($curatorNick);
     $curatorShifts = [];
     
     // 1. Ищем, какие смены ведет этот куратор (строки 15-26, T=19 - Смена, V=21 - Ник)
@@ -58,8 +66,8 @@ function getMasterNicksForCurator($curatorNick) {
         if ($logicRow >= 15 && $logicRow < 30) {
             $row = $rows[$i];
             if (isset($row[21], $row[19])) {
-                $nickInTable = mb_strtolower(trim($row[21]));
-                if ($nickInTable !== '' && (strpos($nickInTable, $curatorNick) !== false || strpos($curatorNick, $nickInTable) !== false)) {
+                $nickInTableNorm = normalizeStaffNick($row[21]);
+                if ($nickInTableNorm !== '' && (strpos($nickInTableNorm, $curatorNickNorm) !== false || strpos($curatorNickNorm, $nickInTableNorm) !== false)) {
                     $shift = trim($row[19]);
                     if ($shift !== '') $curatorShifts[] = $shift;
                 }
