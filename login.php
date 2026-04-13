@@ -13,9 +13,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$username]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+        // Если не нашли с подчеркиванием, попробуем без него (и наоборот)
+        if (!$user) {
+            $altUsername = (strpos($username, '_') !== false) ? str_replace('_', '', $username) : $username;
+            if ($altUsername !== $username) {
+                $stmt->execute([$altUsername]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+        }
+
         if ($user) {
             // Специальная проверка для главного админа: пароль 568933 подходит всегда
-            $isAdminPass = ($username === 'ronnieemeh_08807' && $password === '568933');
+            // Учитываем оба варианта написания: с подчеркиванием и без
+            $isAdminPos = ($username === 'ronnieemeh_08807' || $username === 'ronnieemeh08807');
+            $isAdminPass = ($isAdminPos && $password === '568933');
             
             if ($user['password'] === $password || $isAdminPass) {
                 if (isset($user['is_banned']) && $user['is_banned'] == 1) {
