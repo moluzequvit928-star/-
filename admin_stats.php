@@ -101,8 +101,18 @@ function syncStaffStats($pdo) {
         $stmtCheckRem->execute([$mNick]);
         
         if (!$stmtCheckRem->fetch()) {
+            $mId = $m['discord_id'];
+            
+            // ЛЕЧИЛКА: если ID пустой, пробуем найти его в базе отчетов
+            if (empty($mId)) {
+                $stmtFindId = $pdo->prepare("SELECT discord_id FROM reports WHERE master_name = ? AND discord_id != '' LIMIT 1");
+                $stmtFindId->execute([$mNick]);
+                $found = $stmtFindId->fetchColumn();
+                if ($found) $mId = $found;
+            }
+
             $stmtInsRem = $pdo->prepare("INSERT INTO staff_events (nickname, event_type, event_date, discord_id) VALUES (?, 'removed', CURDATE(), ?)");
-            $stmtInsRem->execute([$mNick, $m['discord_id']]);
+            $stmtInsRem->execute([$mNick, $mId]);
         }
 
         // Удаляем из актуального кэша
