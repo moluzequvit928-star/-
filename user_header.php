@@ -70,9 +70,13 @@ if ($current_role === 'admin') {
 }
 ?>
 <script>
-    // Инициализация темы до отрисовки основной части
+    // Инициализация темы и шрифта до отрисовки основной части
     (function() {
         const savedTheme = localStorage.getItem('site_theme') || 'dark';
         document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        const savedFont = localStorage.getItem('site_font') || "'Inter', sans-serif";
+        document.documentElement.style.setProperty('--font-family', savedFont);
     })();
 </script>
+

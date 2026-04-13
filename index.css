@@ -30,10 +30,22 @@
     --warning: #D97706;
 }
 
+[data-theme="red"] {
+    --bg-main: #1a0505;
+    --bg-secondary: rgba(45, 10, 10, 0.6);
+    --bg-sidebar: #2a0808;
+    --text-main: #fff0f0;
+    --text-muted: #a38585;
+    --accent: #ff0000;
+    --accent-hover: #cc0000;
+    --border-color: rgba(255, 0, 0, 0.2);
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: var(--font-family, 'Inter', sans-serif);
 }
 
 body {

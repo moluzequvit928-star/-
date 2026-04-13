@@ -72,13 +72,19 @@ require_once 'user_header.php';
                             <!-- Тема: Стандартная (Dark) -->
                             <div class="theme-card" id="theme-dark" onclick="setTheme('dark')">
                                 <div class="theme-preview" style="background: #0B0F19; border: 4px solid #141B2D;"></div>
-                                <span style="font-weight: 600;">Темно-синяя (Стандарт)</span>
+                                <span style="font-weight: 600;">Темно-синяя</span>
                             </div>
 
                             <!-- Тема: Глубокий черный (Black) -->
                             <div class="theme-card" id="theme-black" onclick="setTheme('black')">
                                 <div class="theme-preview" style="background: #000000; border: 4px solid #111111;"></div>
-                                <span style="font-weight: 600;">Глубоко-черная</span>
+                                <span style="font-weight: 600;">Глубокая</span>
+                            </div>
+
+                            <!-- Тема: Алая (Red) -->
+                            <div class="theme-card" id="theme-red" onclick="setTheme('red')">
+                                <div class="theme-preview" style="background: #1a0505; border: 4px solid #ff0000;"></div>
+                                <span style="font-weight: 600; color: #cc0000;">Красно-алая</span>
                             </div>
 
                             <!-- Тема: Светлая (Light) -->
@@ -89,30 +95,71 @@ require_once 'user_header.php';
                         </div>
                     </div>
                 </div>
+
+                <div class="card glass" style="margin-top: 2rem;">
+                    <div class="card-header">
+                        <h3>🔤 Настройка шрифтов</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="theme-grid" id="font-grid">
+                            <div class="theme-card" onclick="setFont('\'Inter\', sans-serif')" id="font-inter">
+                                <div style="font-family: 'Inter', sans-serif; font-size: 1.5rem; margin-bottom: 0.5rem;">Aa</div>
+                                <span>Inter (Стандарт)</span>
+                            </div>
+                            <div class="theme-card" onclick="setFont('\'Outfit\', sans-serif')" id="font-outfit">
+                                <div style="font-family: 'Outfit', sans-serif; font-size: 1.5rem; margin-bottom: 0.5rem;">Aa</div>
+                                <span>Outfit (Модерн)</span>
+                            </div>
+                            <div class="theme-card" onclick="setFont('\'Montserrat\', sans-serif')" id="font-montserrat">
+                                <div style="font-family: 'Montserrat', sans-serif; font-size: 1.5rem; margin-bottom: 0.5rem;">Aa</div>
+                                <span>Montserrat</span>
+                            </div>
+                            <div class="theme-card" onclick="setFont('\'Roboto Mono\', monospace')" id="font-roboto">
+                                <div style="font-family: 'Roboto Mono', monospace; font-size: 1.5rem; margin-bottom: 0.5rem;">Aa</div>
+                                <span>Roboto Mono</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
     </div>
 
     <script>
         function setTheme(theme) {
-            // Применяем тему к HTML
             document.documentElement.setAttribute('data-theme', theme);
-            // Сохраняем выбор
             localStorage.setItem('site_theme', theme);
-            // Визуально обновляем карточки
             updateActiveCard(theme);
         }
 
+        function setFont(font) {
+            document.documentElement.style.setProperty('--font-family', font);
+            localStorage.setItem('site_font', font);
+            updateActiveFont(font);
+        }
+
         function updateActiveCard(theme) {
-            document.querySelectorAll('.theme-card').forEach(card => card.classList.remove('active'));
+            document.querySelectorAll('.theme-card').forEach(card => {
+                if(card.id.startsWith('theme-')) card.classList.remove('active');
+            });
             const activeCard = document.getElementById('theme-' + theme);
             if (activeCard) activeCard.classList.add('active');
         }
 
-        // Инициализация активной карточки при загрузке
+        function updateActiveFont(font) {
+            document.querySelectorAll('#font-grid .theme-card').forEach(card => card.classList.remove('active'));
+            if (font.includes('Inter')) document.getElementById('font-inter').classList.add('active');
+            else if (font.includes('Outfit')) document.getElementById('font-outfit').classList.add('active');
+            else if (font.includes('Montserrat')) document.getElementById('font-montserrat').classList.add('active');
+            else if (font.includes('Roboto Mono')) document.getElementById('font-roboto').classList.add('active');
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const currentTheme = localStorage.getItem('site_theme') || 'dark';
             updateActiveCard(currentTheme);
+            
+            const currentFont = localStorage.getItem('site_font') || "'Inter', sans-serif";
+            updateActiveFont(currentFont);
         });
 
         // Бургер меню
