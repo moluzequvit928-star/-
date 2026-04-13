@@ -137,6 +137,22 @@ function getStatusBadge($status) {
             </header>
             
             <section class="content">
+                <!-- DEBUG: Role: <?= $role ?>, Masters: <?= count($myMasters ?? []) ?> -->
+                <?php if ($role === 'curator' && !empty($myMasters)): ?>
+                <div class="card glass" style="margin-bottom: 2rem; border-left: 4px solid #A78BFA;">
+                    <div class="card-header">
+                        <h3 style="font-size: 1.1rem; color: #A78BFA;">👥 Ваш курируемый состав</h3>
+                    </div>
+                    <div class="card-body" style="display: flex; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.5rem;">
+                        <?php foreach ($myMasters as $mNick): ?>
+                            <span style="background: rgba(167, 139, 250, 0.1); color: #E2E8F0; padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid rgba(167, 139, 250, 0.2); font-size: 0.9rem; font-weight: 500;">
+                                <?= htmlspecialchars($mNick) ?>
+                            </span>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <div class="card glass" style="grid-column: 1 / -1;">
                     <div class="card-header">
                         <h3>Все отчеты</h3>
