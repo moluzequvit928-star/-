@@ -124,20 +124,8 @@ function syncStaffStats($pdo) {
 // Запускаем синхронизацию
 syncStaffStats($pdo);
 
-// РАЗОВАЯ ЛЕЧИЛКА ДЛЯ СУЩЕСТВУЮЩИХ ЗАПИСЕЙ
-// Если есть старые записи без ID — пробуем их вылечить через таблицу отчетов
-try {
-    $stmtHeal = $pdo->query("SELECT id, nickname FROM staff_events WHERE discord_id = '' OR discord_id IS NULL");
-    $toHeal = $stmtHeal->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($toHeal as $hEvent) {
-        $stmtFId = $pdo->prepare("SELECT discord_id FROM reports WHERE master_name = ? AND discord_id != '' LIMIT 1");
-        $stmtFId->execute([$hEvent['nickname']]);
-        $foundId = $stmtFId->fetchColumn();
-        if ($foundId) {
-            $pdo->prepare("UPDATE staff_events SET discord_id = ? WHERE id = ?")->execute([$foundId, $hEvent['id']]);
-        }
-    }
-} catch (Exception $e) {}
+// Запускаем синхронизацию
+syncStaffStats($pdo);
 
 // Получаем статистику за текущую неделю
 $monday = date('Y-m-d', strtotime('monday this week'));
@@ -150,40 +138,6 @@ $addedCount = $stmtAdded->fetchColumn();
 $stmtRemoved = $pdo->prepare("SELECT COUNT(*) FROM staff_events WHERE event_type = 'removed' AND event_date BETWEEN ? AND ?");
 $stmtRemoved->execute([$monday, $sunday]);
 $removedCount = $stmtRemoved->fetchColumn();
-
-// --- НОВАЯ ЛОГИКА: СБОР ДАННЫХ ПО НОРМАМ МАСТЕРОВ ---
-$mastersNorma = [];
-$thisWeekMon = date('Y-m-d 00:00:00', strtotime('monday this week'));
-$thisWeekSun = date('Y-m-d 23:59:59', strtotime('sunday this week'));
-
-// 1. Получаем список всех активных мастеров из кэша
-$stmtAllMasters = $pdo->query("SELECT nickname FROM staff_current_cache ORDER BY nickname ASC");
-$allActiveNicks = $stmtAllMasters->fetchAll(PDO::FETCH_COLUMN);
-
-// 2. Если это куратор — фильтруем только его мастеров
-if ($current_role === 'curator') {
-    $myTeamNicks = getMasterNicksForCurator($_SESSION['username']);
-    $allActiveNicks = array_intersect($allActiveNicks, $myTeamNicks);
-}
-
-// 3. Считаем отчеты для каждого
-foreach ($allActiveNicks as $mNick) {
-    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM reports WHERE master_name = ? AND status = 'approved' AND created_at BETWEEN ? AND ?");
-    $stmtCount->execute([$mNick, $thisWeekMon, $thisWeekSun]);
-    $count = $stmtCount->fetchColumn();
-    
-    $mastersNorma[] = [
-        'nickname' => $mNick,
-        'count' => $count,
-        'percent' => min(100, ($count / 10) * 100)
-    ];
-}
-
-// Сортировка: сначала те, у кого меньше всего отчетов (кому надо напомнить)
-usort($mastersNorma, function($a, $b) {
-    return $a['count'] <=> $b['count'];
-});
-// ---------------------------------------------------
 
 // Получаем последние события в журнале (Неделя)
 $stmtEvents = $pdo->prepare("SELECT * FROM staff_events WHERE event_date BETWEEN ? AND ? ORDER BY created_at DESC LIMIT 50");
@@ -257,13 +211,6 @@ $recentEvents = $stmtEvents->fetchAll(PDO::FETCH_ASSOC);
         }
         .pill-added { background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
         .pill-removed { background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-
-        /* Стиль для прогресс-бара */
-        .norma-progress-bg { background: rgba(255,255,255,0.05); height: 8px; border-radius: 10px; flex-grow: 1; overflow: hidden; }
-        .norma-progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease-out; }
-        .norma-success { background: #10B981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
-        .norma-active { background: #6366F1; }
-        .norma-warning { background: #F59E0B; }
     </style>
 </head>
 <body>
@@ -310,39 +257,6 @@ $recentEvents = $stmtEvents->fetchAll(PDO::FETCH_ASSOC);
                         <p style="margin:0; font-size: 0.8rem; color: #64748B;">За текущую неделю</p>
                     </div>
                 </div>
-
-                    <div class="card glass">
-                        <div class="card-header">
-                            <h3>📊 Норма мастеров (10/неделя)</h3>
-                        </div>
-                        <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-                            <?php if (empty($mastersNorma)): ?>
-                                <p style="color: #94A3B8; text-align: center; padding: 1rem;">Нет активных мастеров в списке.</p>
-                            <?php else: ?>
-                                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                                    <?php foreach ($mastersNorma as $m): ?>
-                                        <div style="background: rgba(255,255,255,0.02); padding: 0.8rem; border-radius: 10px; display: flex; flex-direction: column; gap: 0.5rem;">
-                                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                                <span style="font-weight: 600; color: #E2E8F0;"><?= htmlspecialchars($m['nickname']) ?></span>
-                                                <span style="font-size: 0.9rem; font-weight: 700; color: <?= $m['count'] >= 10 ? '#10B981' : '#A78BFA' ?>;">
-                                                    <?= $m['count'] ?> / 10
-                                                </span>
-                                            </div>
-                                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                                <div class="norma-progress-bg">
-                                                    <div class="norma-progress-fill <?= $m['count'] >= 10 ? 'norma-success' : ($m['count'] > 0 ? 'norma-active' : 'norma-warning') ?>" 
-                                                         style="width: <?= $m['percent'] ?>%;"></div>
-                                                </div>
-                                                <?php if ($m['count'] >= 10): ?>
-                                                    <span style="font-size: 0.75rem; color: #10B981; font-weight: 700;">ГОТОВО</span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
 
                     <div class="card glass" style="grid-column: 1 / -1;">
                         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">

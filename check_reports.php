@@ -44,6 +44,17 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $reports = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// КЭШ НОРМ: Считаем сколько кто сделал за неделю
+$weeklyCounts = [];
+$mon = date('Y-m-d 00:00:00', strtotime('monday this week'));
+$sun = date('Y-m-d 23:59:59', strtotime('sunday this week'));
+
+$stmtCounts = $pdo->prepare("SELECT master_name, COUNT(*) as total FROM reports WHERE status = 'approved' AND created_at BETWEEN ? AND ? GROUP BY master_name");
+$stmtCounts->execute([$mon, $sun]);
+while ($rowC = $stmtCounts->fetch()) {
+    $weeklyCounts[$rowC['master_name']] = $rowC['total'];
+}
+
 function getStatusBadge($status) {
     if ($status === 'approved') {
         return '<span class="status success" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">✅ Одобрено</span>';
@@ -146,9 +157,17 @@ function getStatusBadge($status) {
                             </thead>
                             <tbody>
                                 <?php if (count($reports) > 0): ?>
-                                    <?php foreach ($reports as $report): ?>
+                                    <?php foreach ($reports as $report): 
+                                        $mName = $report['master_name'];
+                                        $mCount = $weeklyCounts[$mName] ?? 0;
+                                    ?>
                                         <tr id="report-row-<?= $report['id'] ?>" style="transition: opacity 0.3s ease, transform 0.3s ease;">
-                                            <td style="font-weight: 500; color: #E2E8F0;"><?= htmlspecialchars($report['master_name']) ?></td>
+                                            <td style="font-weight: 500; color: #E2E8F0;">
+                                                <?= htmlspecialchars($mName) ?> 
+                                                <span style="font-size: 0.8rem; color: #A78BFA; background: rgba(167, 139, 250, 0.1); padding: 2px 6px; border-radius: 4px; margin-left: 5px;">
+                                                    <?= $mCount ?>/10
+                                                </span>
+                                            </td>
                                             <td style="color: #94A3B8; font-size: 0.9rem;"><?= date('d.m.Y H:i', strtotime($report['created_at'])) ?></td>
                                             <td style="color: #E2E8F0;">
                                                 <strong style="color: #A5B4FC;"><?= htmlspecialchars($report['candidate_nickname'] ?: '...') ?></strong>
