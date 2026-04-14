@@ -107,9 +107,20 @@ if ($action === 'reattestation_queue') {
 
 // 2. СОХРАНЕНИЕ
 if ($action === 'set_reattestation_result') {
-    $data = json_decode(file_get_contents('php://input'), true);
+    // Пробуем взять из обычного POST или из JSON
+    $id = $_POST['discord_id'] ?? '';
+    $nick = $_POST['discord_nickname'] ?? $_POST['nickname'] ?? '';
+    $res = $_POST['result'] ?? '';
+
+    if (!$id) {
+        $json = json_decode(file_get_contents('php://input'), true);
+        $id = $json['discord_id'] ?? '';
+        $nick = $json['discord_nickname'] ?? $json['nickname'] ?? '';
+        $res = $json['result'] ?? '';
+    }
+
     $stmt = $pdo->prepare("INSERT INTO reattestations (discord_id, discord_nickname, curator, result) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$data['discord_id'], $data['nickname'], $_SESSION['username'], $data['result']]);
+    $stmt->execute([$id, $nick, $_SESSION['username'] ?? 'System', $res]);
     echo json_encode(['success' => true]);
     exit;
 }
