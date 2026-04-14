@@ -89,18 +89,20 @@ if ($role !== 'admin' && $role !== 'curator') {
                         </button>
                     </div>
 
-                    <table class="custom-table">
-                        <thead>
-                            <tr>
-                                <th>Саппорт</th>
-                                <th>Дата проведения</th>
-                                <th>Попытка</th>
-                                <th>Куратор</th>
-                                <th style="text-align: right;">Действие</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reattestation-list"></tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Саппорт</th>
+                                    <th>Дата проведения</th>
+                                    <th>Попытка</th>
+                                    <th>Куратор</th>
+                                    <th style="text-align: right;">Действие</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reattestation-list"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
         </main>

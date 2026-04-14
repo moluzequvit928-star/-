@@ -190,8 +190,9 @@ function getStatusBadge($status)
                             style="background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3);">Требуют
                             проверки</span>
                     </div>
-                    <div class="card-body" style="overflow-x: auto;">
-                        <table class="report-table">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="report-table">
                             <thead>
                                 <tr>
                                     <th>Мастер</th>
@@ -265,6 +266,7 @@ function getStatusBadge($status)
                         </table>
                     </div>
                 </div>
+            </div>
             </section>
         </main>
     </div>
