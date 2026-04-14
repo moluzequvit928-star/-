@@ -160,7 +160,7 @@ function getStatusBadge($status)
                         style="margin-bottom: 2rem; border-left: 4px solid #A78BFA; grid-column: 1 / -1;">
                         <div class="card-header">
                             <h3 style="font-size: 1.1rem; color: #A78BFA; display: flex; align-items: center; gap: 0.5rem;">
-                                <span style="font-size: 1.4rem;">👥</span> Мои саппорты:
+                                <span style="font-size: 1.4rem;">👥</span> Мои мастера:
                             </h3>
                             <span class="status info"
                                 style="background: rgba(167, 139, 250, 0.1); color: #A78BFA; border: none;">Активен</span>
@@ -177,7 +177,7 @@ function getStatusBadge($status)
                                     </div>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <span style="color: #64748B; font-style: italic; font-size: 0.9rem;">Саппорты не назначены (проверьте таблицу)</span>
+                                <span style="color: #64748B; font-style: italic; font-size: 0.9rem;">Мастера не назначены (проверьте таблицу)</span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -194,7 +194,7 @@ function getStatusBadge($status)
                         <table class="report-table">
                             <thead>
                                 <tr>
-                                    <th>Саппорт</th>
+                                    <th>Мастер</th>
                                     <th>Когда отправлено</th>
                                     <th>Кандидат (Ник / ID)</th>
                                     <th>Приглашен</th>

@@ -83,7 +83,7 @@ if ($role !== 'admin' && $role !== 'curator') {
             <section class="content">
                 <div class="reattestation-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h2 style="margin: 0; font-size: 1.1rem; letter-spacing: 0.5px;">Список мастеров</h2>
+                        <h2 style="margin: 0; font-size: 1.1rem; letter-spacing: 0.5px;">Список саппортов</h2>
                         <button onclick="loadQueue()" class="refresh-btn" title="Обновить список">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                         </button>
@@ -92,7 +92,7 @@ if ($role !== 'admin' && $role !== 'curator') {
                     <table class="custom-table">
                         <thead>
                             <tr>
-                                <th>Мастер</th>
+                                <th>Саппорт</th>
                                 <th>Дата проведения</th>
                                 <th>Попытка</th>
                                 <th>Куратор</th>
