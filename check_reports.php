@@ -155,7 +155,7 @@ function getStatusBadge($status)
             </header>
 
             <section class="content">
-                <?php if ($role === 'curator' && !empty($myMasters)): ?>
+                <?php if ($role === 'curator'): ?>
                     <div class="card glass"
                         style="margin-bottom: 2rem; border-left: 4px solid #A78BFA; grid-column: 1 / -1;">
                         <div class="card-header">
@@ -166,15 +166,19 @@ function getStatusBadge($status)
                                 style="background: rgba(167, 139, 250, 0.1); color: #A78BFA; border: none;">Активен</span>
                         </div>
                         <div class="card-body" style="display: flex; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.5rem;">
-                            <?php foreach ($myMasters as $mNick): ?>
-                                <div
-                                    style="background: rgba(167, 139, 250, 0.05); color: #F1F5F9; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.15); font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+                            <?php if (!empty($myMasters)): ?>
+                                <?php foreach ($myMasters as $mNick): ?>
                                     <div
-                                        style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);">
+                                        style="background: rgba(167, 139, 250, 0.05); color: #F1F5F9; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.15); font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+                                        <div
+                                            style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);">
+                                        </div>
+                                        <?= htmlspecialchars($mNick) ?>
                                     </div>
-                                    <?= htmlspecialchars($mNick) ?>
-                                </div>
-                            <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <span style="color: #64748B; font-style: italic; font-size: 0.9rem;">Мастера не назначены (проверьте таблицу)</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endif; ?>
