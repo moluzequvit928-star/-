@@ -113,9 +113,9 @@ function syncStaffStats($pdo) {
         if (!$stmtCheckRem->fetch()) {
             $mId = $m['discord_id'];
             
-            // ЛЕЧИЛКА: если ID пустой, пробуем найти его в базе отчетов
+            // ЛЕЧИЛКА: если ID пустой, пробуем найти его в базе пользователей
             if (empty($mId)) {
-                $stmtFindId = $pdo->prepare("SELECT discord_id FROM reports WHERE master_name = ? AND discord_id != '' LIMIT 1");
+                $stmtFindId = $pdo->prepare("SELECT discord_id FROM users WHERE username = ? AND discord_id != '' LIMIT 1");
                 $stmtFindId->execute([$mNick]);
                 $found = $stmtFindId->fetchColumn();
                 if ($found) $mId = $found;
