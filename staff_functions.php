@@ -51,6 +51,14 @@ function normalizeStaffNick($text) {
 }
 
 /**
+ * Нормализация смен (удаляем пробелы и все виды тире)
+ */
+function normalizeShift($shift) {
+    $s = trim((string)$shift);
+    return preg_replace('/[\s\-\—\−]/u', '', $s);
+}
+
+/**
  * Возвращает список никнеймов мастеров, которые закреплены за куратором
  */
 function getMasterNicksForCurator($curatorNick) {
@@ -59,14 +67,23 @@ function getMasterNicksForCurator($curatorNick) {
     if (empty($rows)) return [];
 
     $curatorNickNorm = normalizeStaffNick($curatorNick);
+    $curatorDiscordId = $_SESSION['discord_id'] ?? '';
     $curatorShifts = [];
     
-    // 1. Ищем, какую смены ведет этот куратор (по всей таблице, колонка V=21 - Ник, T=19 - Смена)
+    // 1. Ищем, какие смены ведет этот куратор (по нику ИЛИ по Discord ID)
     foreach ($rows as $row) {
         if (isset($row[21], $row[19])) {
             $nickInTableNorm = normalizeStaffNick($row[21]);
-            if ($nickInTableNorm !== '' && (strpos($nickInTableNorm, $curatorNickNorm) !== false || strpos($curatorNickNorm, $nickInTableNorm) !== false)) {
-                $shift = trim($row[19]);
+            $idInTable = isset($row[22]) ? trim($row[22]) : '';
+            
+            $isMe = false;
+            // Сверяем по нику
+            if ($nickInTableNorm !== '' && (strpos($nickInTableNorm, $curatorNickNorm) !== false || strpos($curatorNickNorm, $nickInTableNorm) !== false)) $isMe = true;
+            // Или по Discord ID (если он есть)
+            if (!$isMe && $curatorDiscordId !== '' && $idInTable === $curatorDiscordId) $isMe = true;
+
+            if ($isMe) {
+                $shift = normalizeShift($row[19]);
                 if ($shift !== '') $curatorShifts[] = $shift;
             }
         }
@@ -74,12 +91,12 @@ function getMasterNicksForCurator($curatorNick) {
 
     if (empty($curatorShifts)) return [];
 
-    // 2. Ищем всех мастеров в этих сменах (колонки T=19, V=21)
     $masterNicks = [];
     $lastSeenShift = '';
+
+    // 2. Ищем всех мастеров в этих сменах
     foreach ($rows as $row) {
-        // Если в текущей строке указана новая смена - запоминаем её
-        $shiftInRow = isset($row[19]) ? trim($row[19]) : '';
+        $shiftInRow = isset($row[19]) ? normalizeShift($row[19]) : '';
         if ($shiftInRow !== '') {
             $lastSeenShift = $shiftInRow;
         }
@@ -88,7 +105,6 @@ function getMasterNicksForCurator($curatorNick) {
             $role = mb_strtolower(trim($row[20] ?? ''));
             // Проверяем роль (мастер или саппорт)
             if (strpos($role, 'мастер') !== false || strpos($role, 'саппорт') !== false) {
-                // Если текущая (или унаследованная) смена совпадает со сменой куратора
                 if (in_array($lastSeenShift, $curatorShifts, true)) {
                     $masterNick = trim($row[21]);
                     if ($masterNick !== '') $masterNicks[] = $masterNick;
