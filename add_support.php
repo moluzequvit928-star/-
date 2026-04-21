@@ -55,8 +55,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($res === false || $code >= 400) {
                 $response['error'] = 'Ошибка при отправке в Apps Script: ' . ($err ?: $res);
             } else {
-                $response['ok'] = true;
-                $response['message'] = 'Данные отправлены в таблицу.';
+                // Try parse JSON response from Apps Script
+                $decoded = json_decode($res, true);
+                if (is_array($decoded) && isset($decoded['error'])) {
+                    $response['error'] = 'Apps Script: ' . $decoded['error'];
+                } elseif (is_array($decoded) && isset($decoded['ok']) && $decoded['ok']) {
+                    $response['ok'] = true;
+                    $response['message'] = 'Данные отправлены в таблицу.';
+                } else {
+                    // Unknown but HTTP OK
+                    $response['ok'] = true;
+                    $response['message'] = 'Данные отправлены (без явного подтверждения от сервиса).';
+                }
             }
         }
     }
@@ -69,11 +79,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 function render_fragment($config) {
+    global $response;
     ?>
     <div class="card glass">
         <div class="card-header"><h3>Добавить саппорта</h3></div>
         <div class="card-body">
-            <div id="add-support-msg"></div>
+            <div id="add-support-msg">
+                <?php if (!empty($response['message'])): ?>
+                    <div class="alert-msg alert-success" style="margin-bottom:0.75rem;">✅ <?= htmlspecialchars($response['message']) ?></div>
+                <?php elseif (!empty($response['error'])): ?>
+                    <div class="alert-msg alert-error" style="margin-bottom:0.75rem;">❌ <?= htmlspecialchars($response['error']) ?></div>
+                <?php endif; ?>
+            </div>
             <form id="add-support-form" method="POST" style="display:flex; flex-direction:column; gap:0.75rem; max-width:520px;">
                 <label>Ник саппорта
                     <input name="nick" class="form-input" placeholder="например: supportnick" required>
@@ -97,9 +114,7 @@ function render_fragment($config) {
                     <a href="https://docs.google.com/spreadsheets/d/<?= htmlspecialchars($config['google_sheet_id'] ?? '') ?>/edit#gid=<?= htmlspecialchars($config['main_sheet_gid'] ?? '') ?>" class="btn" target="_blank">Открыть таблицу</a>
                 </div>
             </form>
-            <hr style="margin:1.25rem 0;">
-            <h4>Интеграция Apps Script</h4>
-            <p style="color:#94A3B8;">Скрипт принимает JSON POST: <code>{token, action:'append_staff_row', nick, discord_id, shift, start_at, added_by}</code>. Токен и URL берутся из <code>app_config.php</code>.</p>
+            <div style="height:1rem"></div>
         </div>
     </div>
 
