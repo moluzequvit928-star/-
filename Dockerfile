@@ -17,12 +17,17 @@ RUN rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_wo
 WORKDIR /var/www/html
 COPY . /var/www/html/
 
+# Копируем PHP конфиг для больших файлов
+COPY php.ini /usr/local/etc/php/conf.d/large-files.ini
+
 # Устанавливаем зависимости для Discord бота
 RUN npm install
 
-# Папки для сохранения загруженных картинок (отчетов)
+# Папки для сохранения загруженных картинок и откатов
 RUN mkdir -p /var/www/html/uploads \
-    && chmod -R 777 /var/www/html/uploads
+    && mkdir -p /var/www/html/rollbacks \
+    && chmod -R 777 /var/www/html/uploads \
+    && chmod -R 777 /var/www/html/rollbacks
 
 # Создаем скрипт, который запускает встроенный сервер PHP и бота (без глючного Apache)
 RUN echo '#!/bin/bash\nnode bot.js &\nexec php -S 0.0.0.0:${PORT:-80} -t /var/www/html\n' > /start.sh \

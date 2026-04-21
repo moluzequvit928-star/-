@@ -25,36 +25,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $master_name = $_SESSION['username'] ?? 'Неизвестный мастер';
 
     $newFileName = '';
+    $rollbackFileName = '';
     $uploadSuccess = true;
+    $fileType = null;
+    $fileSize = null;
 
-    // Обработка файла
+    // Обработка скриншота/изображения отчета
     if (isset($_FILES['report_file']) && $_FILES['report_file']['error'] === UPLOAD_ERR_OK) {
         $fileTmpPath = $_FILES['report_file']['tmp_name'];
         $fileName = $_FILES['report_file']['name'];
         $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-        // Разрешенные форматы
+        // Разрешенные форматы для скриншотов
         $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-
-        // Генерация уникального имени
-        $newFileName = uniqid('report_') . '.' . ($fileExtension ?: 'png'); // fallback до png если вставили из буфера без расширения
-        $uploadFileDir = __DIR__ . '/uploads/';
-
-        if (!is_dir($uploadFileDir)) {
-            mkdir($uploadFileDir, 0777, true);
-        }
-
-        $dest_path = $uploadFileDir . $newFileName;
-
-        if (!move_uploaded_file($fileTmpPath, $dest_path)) {
+        
+        // Проверяем расширение
+        if (!in_array($fileExtension, $allowedExts)) {
             $uploadSuccess = false;
-            $message = 'Произошла ошибка при сохранении скриншота.';
+            $message = 'Неподдерживаемый формат изображения. Используйте: JPG, PNG, GIF, WebP';
             $messageType = 'error';
+        } else {
+            // Генерация уникального имени
+            $newFileName = uniqid('report_') . '.' . ($fileExtension ?: 'png');
+            $uploadFileDir = __DIR__ . '/uploads/';
+
+            if (!is_dir($uploadFileDir)) {
+                mkdir($uploadFileDir, 0777, true);
+            }
+
+            $dest_path = $uploadFileDir . $newFileName;
+
+            if (!move_uploaded_file($fileTmpPath, $dest_path)) {
+                $uploadSuccess = false;
+                $message = 'Произошла ошибка при сохранении скриншота.';
+                $messageType = 'error';
+            }
         }
     } elseif (!$invited) {
         $uploadSuccess = false;
         $message = 'Пожалуйста, прикрепите скриншот.';
         $messageType = 'error';
+    }
+
+    // Обработка файла отката (архива) - опционально
+    if ($uploadSuccess && isset($_FILES['rollback_file']) && $_FILES['rollback_file']['error'] === UPLOAD_ERR_OK) {
+        $rollbackTmpPath = $_FILES['rollback_file']['tmp_name'];
+        $rollbackFileName_orig = $_FILES['rollback_file']['name'];
+        $rollbackExtension = strtolower(pathinfo($rollbackFileName_orig, PATHINFO_EXTENSION));
+
+        // Разрешенные форматы для откатов/архивов
+        $allowedArchiveExts = ['zip', 'rar', '7z', 'tar', 'gz', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2'];
+        
+        // Проверяем расширение
+        if (!in_array($rollbackExtension, $allowedArchiveExts)) {
+            // Пытаемся определить по полному имени для .tar.gz и т.д.
+            $basename_parts = explode('.', $rollbackFileName_orig);
+            $combined_ext = implode('.', array_slice($basename_parts, -2));
+            if (!in_array($combined_ext, $allowedArchiveExts)) {
+                $message = 'Неподдерживаемый формат архива. Используйте: ZIP, RAR, 7Z, TAR, GZ, TAR.GZ и т.д.';
+                $messageType = 'warning';
+            }
+        }
+        
+        if ($messageType !== 'warning') {
+            $fileSize = filesize($rollbackTmpPath);
+            $maxSize = 500 * 1024 * 1024; // 500 MB
+            
+            if ($fileSize > $maxSize) {
+                $uploadSuccess = false;
+                $message = 'Файл отката слишком большой. Максимум: 500 MB';
+                $messageType = 'error';
+            } else {
+                // Генерация уникального имени для отката
+                $rollbackFileName = uniqid('rollback_') . '.' . $rollbackExtension;
+                $rollbackFileDir = __DIR__ . '/rollbacks/';
+
+                if (!is_dir($rollbackFileDir)) {
+                    mkdir($rollbackFileDir, 0777, true);
+                }
+
+                $rollback_dest_path = $rollbackFileDir . $rollbackFileName;
+
+                if (!move_uploaded_file($rollbackTmpPath, $rollback_dest_path)) {
+                    $uploadSuccess = false;
+                    $message = 'Произошла ошибка при сохранении файла отката.';
+                    $messageType = 'error';
+                } else {
+                    $fileType = $rollbackExtension;
+                }
+            }
+        }
     }
 
     if ($uploadSuccess) {
@@ -67,8 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, candidate_nickname, invited, screenshot_path, comment) VALUES (?, ?, ?, ?, ?, ?)");
-            if ($stmt->execute([$master_name, $candidate, $candidate_nickname, $invited, $newFileName, $comment])) {
+            $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, candidate_nickname, invited, screenshot_path, comment, rollback_file, file_type, file_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            if ($stmt->execute([$master_name, $candidate, $candidate_nickname, $invited, $newFileName, $comment, $rollbackFileName, $fileType, $fileSize])) {
                 header('Location: reports.php?status=success');
                 exit;
             } else {
@@ -76,8 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'error';
             }
         } catch (PDOException $e) {
-            $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, invited, screenshot_path, comment) VALUES (?, ?, ?, ?, ?)");
-            if ($stmt->execute([$master_name, $candidate, $invited, $newFileName, $comment])) {
+            $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, invited, screenshot_path, comment, rollback_file, file_type, file_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            if ($stmt->execute([$master_name, $candidate, $invited, $newFileName, $comment, $rollbackFileName, $fileType, $fileSize])) {
                 header('Location: reports.php?status=success');
                 exit;
             } else {
@@ -282,6 +342,36 @@ function getStatusBadgeForMaster($status)
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <label style="font-weight: 500; color: var(--text-main);">Файл отката (опционально):
+                                    <span style="font-size: 0.85rem; color: #94A3B8; font-weight: 400;">поддерживаются архивы до 500MB</span>
+                                </label>
+                                <div id="rollback-drop-zone"
+                                    style="border: 2px dashed rgba(168, 85, 247, 0.5); border-radius: 8px; padding: 1.5rem; text-align: center; background: rgba(15, 23, 42, 0.6); cursor: pointer; transition: all 0.2s; position: relative;">
+                                    <div id="rollback-drop-zone-text">
+                                        <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.9rem;">📦 Нажмите для загрузки архива отката</p>
+                                        <p style="font-size: 0.8rem; color: #64748B;">ZIP • RAR • 7Z • TAR • GZ и т.д.</p>
+                                    </div>
+                                    <input type="file" id="rollback_file" name="rollback_file" 
+                                        accept=".zip,.rar,.7z,.tar,.gz,.tar.gz,.tgz,.tar.bz2,.tbz2"
+                                        style="display: none;">
+
+                                    <!-- Блок превью для отката -->
+                                    <div id="rollback-preview-container"
+                                        style="display: none; flex-direction: column; gap: 0.5rem; width: 100%;">
+                                        <div style="position: relative; width: 100%; text-align: center;">
+                                            <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 1rem; color: #C4B5FD;">
+                                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📦</div>
+                                                <div id="rollback-file-info" style="font-weight: 500;"></div>
+                                                <div id="rollback-file-size" style="font-size: 0.85rem; color: #A78BFA; margin-top: 0.25rem;"></div>
+                                            </div>
+                                            <button type="button" id="remove-rollback-btn"
+                                                style="position: absolute; top: 8px; right: 8px; background: #EF4444; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✕</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                                 <label for="comment" style="font-weight: 500; color: var(--text-main);">Комментарий
                                     (необязательно):</label>
                                 <textarea id="comment" name="comment" rows="3"
@@ -350,14 +440,20 @@ function getStatusBadgeForMaster($status)
                                             <div style="min-width: 130px; text-align: center;">
                                                 <?= getStatusBadgeForMaster($report['status'] ?? 'pending') ?>
                                             </div>
-                                            <div style="min-width: 140px; text-align: right;">
+                                            <div style="display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px;">
                                                 <?php if ($report['screenshot_path']): ?>
                                                     <a href="#" onclick="openModal('uploads/<?= htmlspecialchars($report['screenshot_path']) ?>'); return false;"
-                                                        style="color: white; font-size: 0.9rem; text-decoration: none; padding: 0.5rem 0.8rem; background: rgba(99,102,241,0.6); border: 1px solid rgba(99,102,241,1); border-radius: 6px; transition: all 0.2s; display: inline-block;" onmouseover="this.style.background='rgba(99,102,241,0.8)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(99,102,241,0.6)'; this.style.transform='scale(1)'">
-                                                        Посмотреть скрин
+                                                        style="color: white; font-size: 0.9rem; text-decoration: none; padding: 0.5rem 0.8rem; background: rgba(99,102,241,0.6); border: 1px solid rgba(99,102,241,1); border-radius: 6px; transition: all 0.2s; display: inline-block; text-align: center;" onmouseover="this.style.background='rgba(99,102,241,0.8)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(99,102,241,0.6)'; this.style.transform='scale(1)'">
+                                                        📷 Посмотреть скрин
                                                     </a>
                                                 <?php else: ?>
-                                                    <span style="color: #64748B; font-size: 0.85rem; font-style: italic; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 6px; display: inline-block;">Без скриншота</span>
+                                                    <span style="color: #64748B; font-size: 0.85rem; font-style: italic; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 6px; display: inline-block; text-align: center;">Без скриншота</span>
+                                                <?php endif; ?>
+                                                <?php if ($report['rollback_file']): ?>
+                                                    <a href="rollbacks/<?= htmlspecialchars($report['rollback_file']) ?>" download
+                                                        style="color: white; font-size: 0.9rem; text-decoration: none; padding: 0.5rem 0.8rem; background: rgba(168,85,247,0.6); border: 1px solid rgba(168,85,247,1); border-radius: 6px; transition: all 0.2s; display: inline-block; text-align: center;" onmouseover="this.style.background='rgba(168,85,247,0.8)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(168,85,247,0.6)'; this.style.transform='scale(1)'">
+                                                        📦 Откат (<?= htmlspecialchars($report['file_type'] ?? 'архив') ?>) - <?= $report['file_size'] ? round($report['file_size']/1024/1024, 1).' MB' : '?' ?>
+                                                    </a>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -496,6 +592,96 @@ function getStatusBadgeForMaster($status)
                         fileInput.files = e.dataTransfer.files;
                         showFile(droppedFile);
                     }
+                }
+            });
+
+            // ========== ОБРАБОТКА ФАЙЛОВ ОТКАТОВ (АРХИВОВ) ==========
+            const rollbackDropZone = document.getElementById('rollback-drop-zone');
+            const rollbackDropZoneText = document.getElementById('rollback-drop-zone-text');
+            const rollbackFileInput = document.getElementById('rollback_file');
+            const rollbackPreviewContainer = document.getElementById('rollback-preview-container');
+            const rollbackFileInfo = document.getElementById('rollback-file-info');
+            const rollbackFileSize = document.getElementById('rollback-file-size');
+            const removeRollbackBtn = document.getElementById('remove-rollback-btn');
+
+            const allowedArchiveTypes = [
+                'application/zip',
+                'application/x-zip-compressed',
+                'application/x-rar-compressed',
+                'application/x-7z-compressed',
+                'application/gzip',
+                'application/x-tar',
+                'application/x-gzip',
+                'application/x-bzip2'
+            ];
+
+            rollbackDropZone.addEventListener('click', (e) => {
+                if (e.target !== removeRollbackBtn) {
+                    rollbackFileInput.click();
+                }
+            });
+
+            rollbackFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleRollbackFile(e.target.files[0]);
+                }
+            });
+
+            removeRollbackBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                rollbackFileInput.value = '';
+                rollbackPreviewContainer.style.display = 'none';
+                rollbackDropZoneText.style.display = 'block';
+                rollbackDropZone.style.borderColor = 'rgba(168, 85, 247, 0.5)';
+                rollbackDropZone.style.background = 'rgba(15, 23, 42, 0.6)';
+            });
+
+            function handleRollbackFile(file) {
+                const isArchive = file.name.match(/\.(zip|rar|7z|tar|gz|tar\.gz|tgz|tar\.bz2|tbz2)$/i);
+                
+                if (!isArchive) {
+                    alert('Пожалуйста, загрузите архив (ZIP, RAR, 7Z, TAR, GZ и т.д.)');
+                    return;
+                }
+
+                const maxSize = 500 * 1024 * 1024; // 500 MB
+                if (file.size > maxSize) {
+                    alert('Файл слишком большой. Максимум: 500 MB');
+                    return;
+                }
+
+                const sizeInMB = (file.size / 1024 / 1024).toFixed(2);
+                rollbackFileInfo.textContent = file.name;
+                rollbackFileSize.textContent = `${sizeInMB} MB`;
+
+                rollbackDropZoneText.style.display = 'none';
+                rollbackPreviewContainer.style.display = 'flex';
+                rollbackDropZone.style.borderColor = '#A78BFA';
+                rollbackDropZone.style.background = 'rgba(168, 85, 247, 0.05)';
+            }
+
+            // Drag and Drop для откатов
+            rollbackDropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (rollbackFileInput.files.length === 0) {
+                    rollbackDropZone.style.borderColor = '#A78BFA';
+                    rollbackDropZone.style.background = 'rgba(168, 85, 247, 0.1)';
+                }
+            });
+            rollbackDropZone.addEventListener('dragleave', () => {
+                if (rollbackFileInput.files.length === 0) {
+                    rollbackDropZone.style.borderColor = 'rgba(168, 85, 247, 0.5)';
+                    rollbackDropZone.style.background = 'rgba(15, 23, 42, 0.6)';
+                }
+            });
+            rollbackDropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files.length > 0) {
+                    const droppedFile = e.dataTransfer.files[0];
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(droppedFile);
+                    rollbackFileInput.files = dataTransfer.files;
+                    handleRollbackFile(droppedFile);
                 }
             });
         });
