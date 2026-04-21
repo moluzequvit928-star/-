@@ -33,13 +33,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileName = $_FILES['report_file']['name'];
         $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-        // Разрешенные форматы для скриншотов (только изображения)
-        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        // Разрешенные форматы для скриншотов и видео (mp4)
+        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4'];
 
         // Проверяем расширение
         if (!in_array($fileExtension, $allowedExts)) {
             $uploadSuccess = false;
-            $message = 'Неподдерживаемый формат изображения. Используйте: JPG, PNG, GIF, WebP';
+            $message = 'Неподдерживаемый формат файла. Используйте: JPG, PNG, GIF, WebP или MP4';
             $messageType = 'error';
         } else {
             // Генерация уникального имени
@@ -272,7 +272,7 @@ function getStatusBadgeForMaster($status)
                                             чтобы вставить скриншот</p>
                                     </div>
                                     <!-- Важно: убран 'required', так как файл ставится через JS (иногда DataTransfer теряет required на некоторых браузерах), но добавлена проверка -->
-                                    <input type="file" id="report_file" name="report_file" accept="image/*"
+                                    <input type="file" id="report_file" name="report_file" accept="image/*,video/mp4"
                                         style="display: none;" required>
 
                                     <!-- Блок превью файла -->
@@ -281,7 +281,7 @@ function getStatusBadgeForMaster($status)
                                         <div style="position: relative; width: 100%;">
                                             <img id="image-preview" src="" alt="Превью"
                                                 style="width: 100%; max-height: 350px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none;">
-                                            <!-- video support removed -->
+                                            <video id="video-preview" controls style="width: 100%; max-height: 350px; object-fit: contain; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none; background: black;"></video>
                                             <button type="button" id="remove-file-btn"
                                                 style="position: absolute; top: 8px; right: 8px; background: #EF4444; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✕</button>
                                         </div>
@@ -386,7 +386,7 @@ function getStatusBadgeForMaster($status)
         </main>
     </div>
 
-    <!-- Модальное окно для картинок -->
+    <!-- Модальное окно для картинок/видео -->
     <div id="image-modal"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
         <span
@@ -394,7 +394,8 @@ function getStatusBadgeForMaster($status)
             onclick="closeModal()" onmouseover="this.style.color='#EF4444'"
             onmouseout="this.style.color='white'">&times;</span>
         <img id="modal-img" src=""
-            style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none;">
+        <video id="modal-video" controls style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; background: black;"></video>
     </div>
 
     <!-- Script to handle modal -->
@@ -402,28 +403,37 @@ function getStatusBadgeForMaster($status)
         function openModal(src) {
             const modal = document.getElementById('image-modal');
             const img = document.getElementById('modal-img');
-            img.src = src;
+            const vid = document.getElementById('modal-video');
+            // Сброс
+            if (img) { img.src = ''; img.style.display = 'none'; }
+            if (vid) { vid.pause(); vid.src = ''; vid.style.display = 'none'; }
+
+            if (/\.mp4$/i.test(src) || src.indexOf('video/') !== -1) {
+                vid.src = src;
+                vid.style.display = 'block';
+            } else {
+                img.src = src;
+                img.style.display = 'block';
+            }
             modal.style.display = 'flex';
         }
         function closeModal() {
             const modal = document.getElementById('image-modal');
+            const vid = document.getElementById('modal-video');
+            if (vid) { vid.pause(); vid.src = ''; vid.style.display = 'none'; }
             const img = document.getElementById('modal-img');
-            if (img) { img.src = ''; }
+            if (img) { img.src = ''; img.style.display = 'none'; }
             modal.style.display = 'none';
         }
-        // Закрытие по клику вне картинки
+        // Закрытие по клику вне контента
         document.getElementById('image-modal').addEventListener('click', function (e) {
-            if (e.target === this) {
-                closeModal();
-            }
+            if (e.target === this) closeModal();
         });
-        // Закрытие по кнопке Escape
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeModal();
-        });
+        // Закрытие по Escape
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
     </script>
 
-    <!-- Script to handle file uploads and pasting (images only) -->
+    <!-- Script to handle file uploads and pasting (images + MP4) -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const dropZone = document.getElementById('drop-zone');
@@ -431,54 +441,78 @@ function getStatusBadgeForMaster($status)
             const fileInput = document.getElementById('report_file');
             const previewContainer = document.getElementById('file-preview-container');
             const imagePreview = document.getElementById('image-preview');
+            const videoPreview = document.getElementById('video-preview');
             const filePreviewText = document.getElementById('file-preview-text');
             const removeBtn = document.getElementById('remove-file-btn');
 
-            dropZone.addEventListener('click', (e) => {
-                if (e.target !== removeBtn && e.target !== imagePreview) {
-                    fileInput.click();
-                }
-            });
-
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) showImage(e.target.files[0]);
-            });
-
-            removeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                fileInput.value = '';
+            function resetPreviewUI() {
                 previewContainer.style.display = 'none';
                 dropZoneText.style.display = 'block';
                 dropZone.style.borderColor = 'rgba(99, 102, 241, 0.5)';
                 dropZone.style.background = 'rgba(15, 23, 42, 0.6)';
                 if (imagePreview) { imagePreview.src = ''; imagePreview.style.display = 'none'; }
+                if (videoPreview) { videoPreview.pause(); videoPreview.src = ''; videoPreview.style.display = 'none'; }
+            }
+
+            dropZone.addEventListener('click', (e) => {
+                if (e.target !== removeBtn && e.target !== imagePreview && e.target !== videoPreview) {
+                    fileInput.click();
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) showFile(e.target.files[0]);
+            });
+
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fileInput.value = '';
+                resetPreviewUI();
             });
 
             document.addEventListener('paste', (e) => {
                 if (e.clipboardData && e.clipboardData.files.length > 0) {
                     const pasted = e.clipboardData.files[0];
-                    if (pasted.type && pasted.type.startsWith('image/')) {
-                        const dt = new DataTransfer(); dt.items.add(pasted); fileInput.files = dt.files; showImage(pasted);
+                    if (pasted.type && (pasted.type.startsWith('image/') || pasted.type.startsWith('video/'))) {
+                        const dt = new DataTransfer(); dt.items.add(pasted); fileInput.files = dt.files; showFile(pasted);
                     }
                 }
             });
 
-            function showImage(file) {
-                if (!file || !file.type || !file.type.startsWith('image/')) return;
-                const url = URL.createObjectURL(file);
-                imagePreview.src = url;
-                imagePreview.onload = () => URL.revokeObjectURL(url);
-                imagePreview.style.display = 'block';
+            function showFile(file) {
+                if (!file) return;
+                const sizeKB = (file.size/1024).toFixed(1);
+                filePreviewText.textContent = `${file.name || 'Файл'} (${sizeKB} KB)`;
                 dropZoneText.style.display = 'none';
                 previewContainer.style.display = 'flex';
-                filePreviewText.textContent = `${file.name || 'Скриншот из буфера'} (${(file.size/1024).toFixed(1)} KB)`;
+
+                if (file.type && file.type.startsWith('image/')) {
+                    const url = URL.createObjectURL(file);
+                    imagePreview.src = url;
+                    imagePreview.onload = () => URL.revokeObjectURL(url);
+                    imagePreview.style.display = 'block';
+                    if (videoPreview) { videoPreview.pause(); videoPreview.src = ''; videoPreview.style.display = 'none'; }
+                } else if (file.type && file.type.startsWith('video/') || file.name.match(/\.mp4$/i)) {
+                    const url = URL.createObjectURL(file);
+                    if (videoPreview) {
+                        videoPreview.src = url;
+                        videoPreview.onloadeddata = () => URL.revokeObjectURL(url);
+                        videoPreview.style.display = 'block';
+                    }
+                    if (imagePreview) { imagePreview.src = ''; imagePreview.style.display = 'none'; }
+                } else {
+                    // unknown type: show filename only
+                    if (imagePreview) imagePreview.style.display = 'none';
+                    if (videoPreview) videoPreview.style.display = 'none';
+                }
+
                 dropZone.style.borderColor = '#10B981';
                 dropZone.style.background = 'rgba(16, 185, 129, 0.05)';
             }
 
             dropZone.addEventListener('dragover', (e) => { e.preventDefault(); if (fileInput.files.length === 0) { dropZone.style.borderColor = '#6366F1'; dropZone.style.background = 'rgba(99, 102, 241, 0.1)'; } });
             dropZone.addEventListener('dragleave', () => { if (fileInput.files.length === 0) { dropZone.style.borderColor = 'rgba(99, 102, 241, 0.5)'; dropZone.style.background = 'rgba(15, 23, 42, 0.6)'; } });
-            dropZone.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer.files.length > 0) { const f = e.dataTransfer.files[0]; if (f.type && f.type.startsWith('image/')) { fileInput.files = e.dataTransfer.files; showImage(f); } } });
+            dropZone.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer.files.length > 0) { const f = e.dataTransfer.files[0]; if (f.type && (f.type.startsWith('image/') || f.type.startsWith('video/') || f.name.match(/\.mp4$/i))) { const dt = new DataTransfer(); dt.items.add(f); fileInput.files = dt.files; showFile(f); } } });
         });
     </script>
     <script>
