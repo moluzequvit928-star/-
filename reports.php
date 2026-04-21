@@ -6,7 +6,8 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
     header('Location: login.php');
     exit;
 }
-require_once 'user_header.php';
+// Подключение `user_header.php` выводит HTML — подключаем его только после обработки POST,
+// чтобы вызовы header() (redirect) не выдавали "headers already sent".
 
 $message = '';
 $messageType = '';
@@ -118,6 +119,9 @@ $rejectedCount = $statsRaw['rejected'] ?? 0;
 $stmt = $pdo->prepare("SELECT * FROM reports WHERE master_name = ? ORDER BY created_at DESC LIMIT 10");
 $stmt->execute([$currentUsername]);
 $recentReports = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Теперь безопасно подключаем header (вывод HTML). Это должно быть после всей серверной обработки
+require_once 'user_header.php';
 
 function getStatusBadgeForMaster($status)
 {
