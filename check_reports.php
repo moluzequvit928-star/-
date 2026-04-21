@@ -55,6 +55,14 @@ while ($rowC = $stmtCounts->fetch()) {
     $weeklyCounts[$rowC['master_name']] = $rowC['total'];
 }
 
+// КЭШ ВСЕХ НАБОРОВ: общее количество отчетов (всех статусов) по мастеру
+$totalCounts = [];
+$stmtTotal = $pdo->prepare("SELECT master_name, COUNT(*) as total_all FROM reports GROUP BY master_name");
+$stmtTotal->execute();
+while ($r = $stmtTotal->fetch()) {
+    $totalCounts[$r['master_name']] = $r['total_all'];
+}
+
 function getStatusBadge($status)
 {
     if ($status === 'approved') {
@@ -165,15 +173,22 @@ function getStatusBadge($status)
                             <span class="status info"
                                 style="background: rgba(167, 139, 250, 0.1); color: #A78BFA; border: none;">Активен</span>
                         </div>
-                        <div class="card-body" style="display: flex; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.5rem;">
+                            <div class="card-body" style="display: flex; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.5rem;">
                             <?php if (!empty($myMasters)): ?>
-                                <?php foreach ($myMasters as $mNick): ?>
+                                <?php foreach ($myMasters as $mNick): 
+                                    $totalForMaster = $totalCounts[$mNick] ?? 0;
+                                ?>
                                     <div
-                                        style="background: rgba(167, 139, 250, 0.05); color: #F1F5F9; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.15); font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
-                                        <div
-                                            style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);">
+                                        style="background: rgba(167, 139, 250, 0.05); color: #F1F5F9; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.15); font-size: 0.95rem; font-weight: 500; display: flex; flex-direction: column; gap: 0.4rem; min-width: 160px;">
+                                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                                            <div
+                                                style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);">
+                                            </div>
+                                            <div style="font-weight:600; color:#EDE9FE;"><?= htmlspecialchars($mNick) ?></div>
                                         </div>
-                                        <?= htmlspecialchars($mNick) ?>
+                                        <div style="font-size:0.85rem; color:#C4B5FD; background: rgba(167,139,250,0.04); padding: 4px 8px; border-radius: 8px; width: fit-content;">
+                                            Всего наборов: <strong style="color:#A78BFA; margin-left:6px;"><?= $totalForMaster ?></strong>
+                                        </div>
                                     </div>
                                 <?php endforeach; ?>
                             <?php else: ?>
@@ -215,10 +230,6 @@ function getStatusBadge($status)
                                             style="transition: opacity 0.3s ease, transform 0.3s ease;">
                                             <td style="font-weight: 500; color: #E2E8F0;">
                                                 <?= htmlspecialchars($mName) ?>
-                                                <span
-                                                    style="font-size: 0.8rem; color: #A78BFA; background: rgba(167, 139, 250, 0.1); padding: 2px 6px; border-radius: 4px; margin-left: 5px;">
-                                                    <?= $mCount ?>/10
-                                                </span>
                                             </td>
                                             <td style="color: #94A3B8; font-size: 0.9rem;">
                                                 <?= date('d.m.Y H:i', strtotime($report['created_at'])) ?></td>
