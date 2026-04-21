@@ -63,6 +63,12 @@ while ($r = $stmtTotal->fetch()) {
     $totalCounts[$r['master_name']] = $r['total_all'];
 }
 
+// Если админ — показать всех мастеров в блоке 'Мои мастера'
+if ($role === 'admin') {
+    $myMasters = array_keys($totalCounts);
+    sort($myMasters, SORT_NATURAL | SORT_FLAG_CASE);
+}
+
 function getStatusBadge($status)
 {
     if ($status === 'approved') {
