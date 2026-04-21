@@ -17,7 +17,45 @@ if ($role !== 'admin' && $role !== 'curator') {
 require_once 'user_header.php';
 require_once 'staff_functions.php';
 
-// Обработка действий больше не нужна здесь, так как мы перешли на API
+// Обработка действий: очистка отчетов и удаление мастера (по запросу пользователя)
+$actionMsg = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+    if ($action === 'clear_reports') {
+        $target = trim($_POST['master'] ?? '');
+        if ($target !== '') {
+            $stmtDel = $pdo->prepare("DELETE FROM reports WHERE master_name = ?");
+            $stmtDel->execute([$target]);
+            $message = "Все отчёты мастера «{$target}» удалены.";
+            $messageType = 'success';
+        } else {
+            $message = 'Не указан мастер для очистки отчетов.';
+            $messageType = 'error';
+        }
+    }
+
+    if ($action === 'delete_master') {
+        $target = trim($_POST['master'] ?? '');
+        if ($target === '' ) {
+            $message = 'Не указан мастер для удаления.';
+            $messageType = 'error';
+        } elseif (($role !== 'admin')) {
+            $message = 'Только администратор может удалять мастеров.';
+            $messageType = 'error';
+        } elseif ($target === 'admin' || $target === $_SESSION['username']) {
+            $message = 'Нельзя удалить администратора или самого себя.';
+            $messageType = 'error';
+        } else {
+            // Удалим пользователя и его отчеты
+            $stmtDelUser = $pdo->prepare("DELETE FROM users WHERE username = ?");
+            $stmtDelUser->execute([$target]);
+            $stmtDelReports = $pdo->prepare("DELETE FROM reports WHERE master_name = ?");
+            $stmtDelReports->execute([$target]);
+            $message = "Мастер «{$target}» и его отчёты удалены.";
+            $messageType = 'success';
+        }
+    }
+}
 
 
 // По умолчанию берем все
@@ -65,8 +103,10 @@ while ($r = $stmtTotal->fetch()) {
 
 // Если админ — показать всех мастеров в блоке 'Мои мастера'
 if ($role === 'admin') {
-    $myMasters = array_keys($totalCounts);
-    sort($myMasters, SORT_NATURAL | SORT_FLAG_CASE);
+    // Берём всех пользователей с ролью master из таблицы users, чтобы видеть и тех, у кого 0 наборов
+    $stmtMasters = $pdo->query("SELECT username FROM users WHERE role = 'master' ORDER BY username ASC");
+    $allMastersFromUsers = $stmtMasters->fetchAll(PDO::FETCH_COLUMN);
+    $myMasters = $allMastersFromUsers;
 }
 
 function getStatusBadge($status)
@@ -166,6 +206,30 @@ function getStatusBadge($status)
                             style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4);">Выйти</a>
                     </div>
                 </div>
+    
+                    <!-- Модал подтверждения удаления мастера -->
+                    <div class="modal-overlay" id="delete-master-modal">
+                        <div class="modal-box">
+                            <h3>🗑 Удалить мастера?</h3>
+                            <p id="del-master-name" style="color: #EF4444; margin: 1rem 0; font-weight: 600;"></p>
+                            <form method="POST">
+                                <input type="hidden" name="action" value="delete_master">
+                                <input type="hidden" name="master" id="del-master-input">
+                                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                                    <button type="button" class="btn-add" style="background: grey;" onclick="document.getElementById('delete-master-modal').classList.remove('active')">Отмена</button>
+                                    <button type="submit" class="btn-delete">Да, удалить</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <script>
+                        function openDeleteMasterModal(name) {
+                            document.getElementById('del-master-input').value = name;
+                            document.getElementById('del-master-name').textContent = name;
+                            document.getElementById('delete-master-modal').classList.add('active');
+                        }
+                    </script>
             </header>
 
             <section class="content">
@@ -185,12 +249,24 @@ function getStatusBadge($status)
                                     $totalForMaster = $totalCounts[$mNick] ?? 0;
                                 ?>
                                     <div
-                                        style="background: rgba(167, 139, 250, 0.05); color: #F1F5F9; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.15); font-size: 0.95rem; font-weight: 500; display: flex; flex-direction: column; gap: 0.4rem; min-width: 160px;">
-                                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                                            <div
-                                                style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);">
+                                        style="background: rgba(167, 139, 250, 0.05); color: #F1F5F9; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.15); font-size: 0.95rem; font-weight: 500; display: flex; flex-direction: column; gap: 0.4rem; min-width: 200px;">
+                                        <div style="display:flex; align-items:center; gap:0.5rem; justify-content: space-between;">
+                                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                                <div
+                                                    style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);">
+                                                </div>
+                                                <div style="font-weight:600; color:#EDE9FE;"><?= htmlspecialchars($mNick) ?></div>
                                             </div>
-                                            <div style="font-weight:600; color:#EDE9FE;"><?= htmlspecialchars($mNick) ?></div>
+                                            <div style="display:flex; gap:6px; align-items:center;">
+                                                <form method="POST" style="display:inline;">
+                                                    <input type="hidden" name="action" value="clear_reports">
+                                                    <input type="hidden" name="master" value="<?= htmlspecialchars($mNick) ?>">
+                                                    <button type="submit" class="btn-delete" style="background: rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.18);">🧹 Очистить отчёты</button>
+                                                </form>
+                                                <?php if ($role === 'admin'): ?>
+                                                    <button class="btn-delete" onclick="openDeleteMasterModal('<?= htmlspecialchars($mNick) ?>')" title="Удалить мастера">🗑</button>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                         <div style="font-size:0.85rem; color:#C4B5FD; background: rgba(167,139,250,0.04); padding: 4px 8px; border-radius: 8px; width: fit-content;">
                                             Всего наборов: <strong style="color:#A78BFA; margin-left:6px;"><?= $totalForMaster ?></strong>
