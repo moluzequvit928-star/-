@@ -9,7 +9,7 @@ return [
     'reattestation_gid' => '822458528',
 
     // URL Web App из Google Apps Script.
-    'app_script_webhook_url' => 'https://script.google.com/macros/s/AKfycbwm9GgSxWrK89oBiOgHD8OnzDnSdTYFFCcjgXFYWnr4iEzjv_02mjDURaZFRE7bA1YHDA/exec',
+    'app_script_webhook_url' => 'https://script.google.com/macros/s/AKfycbzB9qPFrPpXdT-lP9Y6lZNt7IqxYCs60slqSGjXFJdBjhKxgfTQjUjssN83YDtJhPj7jQ/exec',
 
     // Тот же токен, что SECRET_TOKEN в Apps Script.
     'app_script_webhook_token' => 'futika_2026_q7N4vP2xLm8Kc5Rz',

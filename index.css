@@ -208,6 +208,22 @@ body {
 
 .card-body p, .card-body label { color: var(--text-muted); }
 
+/* Improve select dropdown appearance */
+.form-select {
+    background: var(--bg-secondary);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+.form-select option {
+    background: var(--bg-main);
+    color: var(--text-main);
+}
+
+.form-select::-ms-expand { display: none; }
+
 
 /* Cards */
 .card {

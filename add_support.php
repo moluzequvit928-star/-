@@ -54,11 +54,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($res === false || $code >= 400) {
                 $response['error'] = 'Ошибка при отправке в Apps Script: ' . ($err ?: $res);
+                $response['raw'] = $res ?: $err;
             } else {
                 // Try parse JSON response from Apps Script
                 $decoded = json_decode($res, true);
                 if (is_array($decoded) && isset($decoded['error'])) {
                     $response['error'] = 'Apps Script: ' . $decoded['error'];
+                    $response['raw'] = $res;
                 } elseif (is_array($decoded) && isset($decoded['ok']) && $decoded['ok']) {
                     $response['ok'] = true;
                     $response['message'] = 'Данные отправлены в таблицу.';
@@ -66,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Unknown but HTTP OK
                     $response['ok'] = true;
                     $response['message'] = 'Данные отправлены (без явного подтверждения от сервиса).';
+                    $response['raw'] = $res;
                 }
             }
         }
@@ -133,7 +136,9 @@ function render_fragment($config) {
                     msg.innerHTML = '<div style="padding:0.6rem;border-radius:6px;background:rgba(16,185,129,0.08);color:#10B981">'+(j.message||'OK')+'</div>';
                     form.reset();
                 } else {
-                    msg.innerHTML = '<div style="padding:0.6rem;border-radius:6px;background:rgba(239,68,68,0.06);color:#EF4444">'+(j.error||'Ошибка')+'</div>';
+                    var errText = j.error || 'Ошибка';
+                    if (j.raw) errText += ' — ' + j.raw.substring(0,120);
+                    msg.innerHTML = '<div style="padding:0.6rem;border-radius:6px;background:rgba(239,68,68,0.06);color:#EF4444">'+errText+'</div>';
                 }
             }).catch(err=>{
                 msg.innerHTML = '<div style="padding:0.6rem;border-radius:6px;background:rgba(239,68,68,0.06);color:#EF4444">'+String(err)+'</div>';

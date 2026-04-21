@@ -29,17 +29,28 @@ function doPost(e) {
       sheet = ss.getActiveSheet();
     }
 
-    // Build row. Adjust column order as needed.
-    // Example columns: Timestamp, StartAt, Nick, DiscordID, Shift, AddedBy
-    var now = new Date();
-    var startAt = payload.start_at || '';
+    // Build row and write into specific columns.
+    // Your sheet uses columns B = StartAt, C = Nick, D = DiscordID
+    // We'll write: B: StartAt, C: Nick, D: DiscordID, E: Shift, F: AddedBy
+    var startAtRaw = payload.start_at || '';
+    var startAt = '';
+    if (startAtRaw) {
+      // try parse ISO datetime
+      try { startAt = new Date(startAtRaw); } catch (e) { startAt = startAtRaw; }
+    }
     var nick = payload.nick || '';
     var discordId = payload.discord_id || '';
     var shift = (typeof payload.shift !== 'undefined') ? payload.shift : '';
     var addedBy = payload.added_by || '';
 
-    var row = [now, startAt, nick, discordId, shift, addedBy];
-    sheet.appendRow(row);
+    var targetRow = sheet.getLastRow() + 1;
+    // Ensure there's at least one header row; if sheet empty, append headers first
+    if (targetRow < 2) targetRow = 2;
+
+    // Prepare values array for columns B-F
+    var values = [ startAt, nick, discordId, shift, addedBy ];
+    // setRange(row, column, numRows, numCols)
+    sheet.getRange(targetRow, 2, 1, values.length).setValues([values]);
 
     return ContentService.createTextOutput(JSON.stringify({ok: true})).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
