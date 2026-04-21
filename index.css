@@ -189,6 +189,26 @@ body {
     gap: 2rem;
 }
 
+/* Form inputs (global) */
+.form-input, .form-select, textarea {
+    padding: 0.7rem 0.9rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    outline: none;
+    font-size: 0.95rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.form-input:focus, .form-select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 6px 18px rgba(79,70,229,0.12);
+}
+.form-select { cursor: pointer; }
+
+.card-body p, .card-body label { color: var(--text-muted); }
+
+
 /* Cards */
 .card {
     border-radius: 12px;

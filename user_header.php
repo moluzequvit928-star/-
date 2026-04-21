@@ -87,3 +87,38 @@ if ($current_role === 'admin') {
     })();
 </script>
 
+<script>
+// AJAX tab loader: intercept sidebar links with data-ajax and load into .main-content
+(function(){
+    function loadAjax(url, pushState) {
+        fetch(url + (url.indexOf('?')===-1 ? '?ajax=1' : '&ajax=1'))
+            .then(r => r.text())
+            .then(html => {
+                const main = document.querySelector('.main-content');
+                if (main) main.innerHTML = html;
+                // update active menu item
+                document.querySelectorAll('.menu-item').forEach(el=>el.classList.remove('active'));
+                const link = document.querySelector('[data-ajax="' + url + '"]');
+                if (link) link.classList.add('active');
+                if (pushState) history.pushState({ajax:true, url:url}, '', '#'+url.replace('.php',''));
+            }).catch(err=>{
+                console.error('Ajax load error', err);
+            });
+    }
+
+    document.addEventListener('click', function(e){
+        const a = e.target.closest('a[data-ajax]');
+        if (!a) return;
+        e.preventDefault();
+        const url = a.getAttribute('data-ajax');
+        if (url) loadAjax(url, true);
+    });
+
+    window.addEventListener('popstate', function(e){
+        if (e.state && e.state.ajax && e.state.url) {
+            loadAjax(e.state.url, false);
+        }
+    });
+})();
+</script>
+
