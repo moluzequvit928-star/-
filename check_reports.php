@@ -169,7 +169,7 @@ function getStatusBadge($status)
             </header>
 
             <section class="content">
-                <?php if ($role === 'curator'): ?>
+                <?php if ($role === 'curator' || $role === 'admin'): ?>
                     <div class="card glass"
                         style="margin-bottom: 2rem; border-left: 4px solid #A78BFA; grid-column: 1 / -1;">
                         <div class="card-header">
