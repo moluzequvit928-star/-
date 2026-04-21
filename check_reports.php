@@ -117,33 +117,7 @@ function getStatusBadge($status)
             color: var(--text-main);
         }
     
-    <!-- Модал для очистки отчётов (глобально) -->
-    <div class="modal-overlay" id="clear-reports-modal">
-        <div class="modal-box">
-            <h3>🧹 Очистить отчёты мастера</h3>
-            <p style="color:#94A3B8;">Выберите мастера, чьи отчёты нужно удалить (будет удалено всё):</p>
-            <form method="POST">
-                <input type="hidden" name="action" value="clear_reports">
-                <div style="margin: 0.75rem 0;">
-                    <select name="master" style="width:100%; padding:0.6rem; border-radius:8px; background:#0F172A; border:1px solid rgba(255,255,255,0.06); color:white;">
-                        <?php foreach ($myMasters as $m): ?>
-                            <option value="<?= htmlspecialchars($m) ?>"><?= htmlspecialchars($m) ?> (<?= $totalCounts[$m] ?? 0 ?>)</option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
-                    <button type="button" class="btn-add" style="background: grey;" onclick="document.getElementById('clear-reports-modal').classList.remove('active')">Отмена</button>
-                    <button type="submit" class="btn-delete">Удалить отчёты</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        document.getElementById('open-clear-modal').addEventListener('click', function () {
-            document.getElementById('clear-reports-modal').classList.add('active');
-        });
-    </script>
+    
 
         .report-table th,
         .report-table td {
@@ -351,6 +325,34 @@ function getStatusBadge($status)
         <img id="modal-img" src=""
             style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
     </div>
+
+    <!-- Модал для очистки отчётов (глобально) -->
+    <div class="modal-overlay" id="clear-reports-modal">
+        <div class="modal-box">
+            <h3>🧹 Очистить отчёты мастера</h3>
+            <p style="color:#94A3B8;">Выберите мастера, чьи отчёты нужно удалить (будет удалено всё):</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="clear_reports">
+                <div style="margin: 0.75rem 0;">
+                    <select name="master" style="width:100%; padding:0.6rem; border-radius:8px; background:#0F172A; border:1px solid rgba(255,255,255,0.06); color:white;">
+                        <?php foreach ($myMasters as $m): ?>
+                            <option value="<?= htmlspecialchars($m) ?>"><?= htmlspecialchars($m) ?> (<?= $totalCounts[$m] ?? 0 ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                    <button type="button" class="btn-add" style="background: grey;" onclick="document.getElementById('clear-reports-modal').classList.remove('active')">Отмена</button>
+                    <button type="submit" class="btn-delete">Удалить отчёты</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('open-clear-modal').addEventListener('click', function () {
+            document.getElementById('clear-reports-modal').classList.add('active');
+        });
+    </script>
 
     <script>
         function updateReportStatus(reportId, status, btn) {
