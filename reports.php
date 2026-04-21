@@ -36,8 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileName = $_FILES['report_file']['name'];
         $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-        // Разрешенные форматы для скриншотов
-        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        // Разрешенные форматы для скриншотов и видео (mp4)
+        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4'];
         
         // Проверяем расширение
         if (!in_array($fileExtension, $allowedExts)) {
@@ -323,7 +323,7 @@ function getStatusBadgeForMaster($status)
                                             чтобы вставить скриншот</p>
                                     </div>
                                     <!-- Важно: убран 'required', так как файл ставится через JS (иногда DataTransfer теряет required на некоторых браузерах), но добавлена проверка -->
-                                    <input type="file" id="report_file" name="report_file" accept="image/*"
+                                    <input type="file" id="report_file" name="report_file" accept="image/*,video/mp4"
                                         style="display: none;" required>
 
                                     <!-- Блок превью файла -->
@@ -331,7 +331,8 @@ function getStatusBadgeForMaster($status)
                                         style="display: none; flex-direction: column; gap: 0.5rem; width: 100%;">
                                         <div style="position: relative; width: 100%;">
                                             <img id="image-preview" src="" alt="Превью"
-                                                style="width: 100%; max-height: 350px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                                                style="width: 100%; max-height: 350px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none;">
+                                            <video id="video-preview" controls style="width: 100%; max-height: 350px; object-fit: contain; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none; background: black;"></video>
                                             <button type="button" id="remove-file-btn"
                                                 style="position: absolute; top: 8px; right: 8px; background: #EF4444; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✕</button>
                                         </div>
@@ -477,17 +478,34 @@ function getStatusBadgeForMaster($status)
             onclick="closeModal()" onmouseover="this.style.color='#EF4444'"
             onmouseout="this.style.color='white'">&times;</span>
         <img id="modal-img" src=""
-            style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none;">
+        <video id="modal-video" controls style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; background: black;"></video>
     </div>
 
     <!-- Script to handle modal -->
     <script>
         function openModal(src) {
-            document.getElementById('modal-img').src = src;
-            document.getElementById('image-modal').style.display = 'flex';
+            const modal = document.getElementById('image-modal');
+            const img = document.getElementById('modal-img');
+            const vid = document.getElementById('modal-video');
+            // Очистим оба
+            img.style.display = 'none'; img.src = '';
+            vid.style.display = 'none'; vid.pause(); vid.src = '';
+
+            if (/\.mp4$/i.test(src)) {
+                vid.src = src;
+                vid.style.display = 'block';
+            } else {
+                img.src = src;
+                img.style.display = 'block';
+            }
+            modal.style.display = 'flex';
         }
         function closeModal() {
-            document.getElementById('image-modal').style.display = 'none';
+            const modal = document.getElementById('image-modal');
+            const vid = document.getElementById('modal-video');
+            if (vid) { vid.pause(); vid.src = ''; }
+            modal.style.display = 'none';
         }
         // Закрытие по клику вне картинки
         document.getElementById('image-modal').addEventListener('click', function (e) {
@@ -509,6 +527,7 @@ function getStatusBadgeForMaster($status)
             const fileInput = document.getElementById('report_file');
             const previewContainer = document.getElementById('file-preview-container');
             const imagePreview = document.getElementById('image-preview');
+            const videoPreview = document.getElementById('video-preview');
             const filePreviewText = document.getElementById('file-preview-text');
             const removeBtn = document.getElementById('remove-file-btn');
 
@@ -536,13 +555,16 @@ function getStatusBadgeForMaster($status)
                 dropZoneText.style.display = 'block';
                 dropZone.style.borderColor = 'rgba(99, 102, 241, 0.5)';
                 dropZone.style.background = 'rgba(15, 23, 42, 0.6)';
+                // очистка видео
+                if (videoPreview) { videoPreview.pause(); videoPreview.src = ''; videoPreview.style.display = 'none'; }
+                if (imagePreview) { imagePreview.src = ''; imagePreview.style.display = 'none'; }
             });
 
             // Handle Ctrl+V paste capability across the document
             document.addEventListener('paste', (e) => {
                 if (e.clipboardData && e.clipboardData.files.length > 0) {
                     const pastedFile = e.clipboardData.files[0];
-                    if (pastedFile.type.startsWith('image/')) {
+                    if (pastedFile.type.startsWith('image/') || pastedFile.type.startsWith('video/')) {
                         const dataTransfer = new DataTransfer();
                         dataTransfer.items.add(pastedFile);
                         fileInput.files = dataTransfer.files;
@@ -552,19 +574,28 @@ function getStatusBadgeForMaster($status)
             });
 
             function showFile(file) {
-                // Если это картинка, показываем превью
-                if (file.type.startsWith('image/')) {
-                    const objectUrl = URL.createObjectURL(file);
-                    imagePreview.src = objectUrl;
-                    imagePreview.onload = () => URL.revokeObjectURL(objectUrl); // Очистка памяти
-                    imagePreview.style.display = 'block';
-                } else {
-                    imagePreview.style.display = 'none';
-                }
-
                 dropZoneText.style.display = 'none';
                 previewContainer.style.display = 'flex';
                 filePreviewText.textContent = `${file.name || 'Скриншот из буфера'} (${(file.size / 1024).toFixed(1)} KB)`;
+
+                // Если это картинка, показываем превью картинки
+                if (file.type.startsWith('image/')) {
+                    const objectUrl = URL.createObjectURL(file);
+                    imagePreview.src = objectUrl;
+                    imagePreview.onload = () => URL.revokeObjectURL(objectUrl);
+                    imagePreview.style.display = 'block';
+                    if (videoPreview) { videoPreview.pause(); videoPreview.src = ''; videoPreview.style.display = 'none'; }
+                } else if (file.type.startsWith('video/') || file.name.match(/\.mp4$/i)) {
+                    // Видео (mp4) превью
+                    const objectUrl = URL.createObjectURL(file);
+                    videoPreview.src = objectUrl;
+                    videoPreview.onloadeddata = () => URL.revokeObjectURL(objectUrl);
+                    videoPreview.style.display = 'block';
+                    if (imagePreview) { imagePreview.src = ''; imagePreview.style.display = 'none'; }
+                } else {
+                    if (imagePreview) imagePreview.style.display = 'none';
+                    if (videoPreview) videoPreview.style.display = 'none';
+                }
 
                 dropZone.style.borderColor = '#10B981';
                 dropZone.style.background = 'rgba(16, 185, 129, 0.05)';
@@ -588,7 +619,7 @@ function getStatusBadgeForMaster($status)
                 e.preventDefault();
                 if (e.dataTransfer.files.length > 0) {
                     const droppedFile = e.dataTransfer.files[0];
-                    if (droppedFile.type.startsWith('image/')) {
+                    if (droppedFile.type.startsWith('image/') || droppedFile.type.startsWith('video/') || droppedFile.name.match(/\.mp4$/i)) {
                         fileInput.files = e.dataTransfer.files;
                         showFile(droppedFile);
                     }
