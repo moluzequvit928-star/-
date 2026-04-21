@@ -34,27 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($action === 'delete_master') {
-        $target = trim($_POST['master'] ?? '');
-        if ($target === '' ) {
-            $message = 'Не указан мастер для удаления.';
-            $messageType = 'error';
-        } elseif (($role !== 'admin')) {
-            $message = 'Только администратор может удалять мастеров.';
-            $messageType = 'error';
-        } elseif ($target === 'admin' || $target === $_SESSION['username']) {
-            $message = 'Нельзя удалить администратора или самого себя.';
-            $messageType = 'error';
-        } else {
-            // Удалим пользователя и его отчеты
-            $stmtDelUser = $pdo->prepare("DELETE FROM users WHERE username = ?");
-            $stmtDelUser->execute([$target]);
-            $stmtDelReports = $pdo->prepare("DELETE FROM reports WHERE master_name = ?");
-            $stmtDelReports->execute([$target]);
-            $message = "Мастер «{$target}» и его отчёты удалены.";
-            $messageType = 'success';
-        }
-    }
+    // удаление мастера через этот интерфейс больше не поддерживается
 }
 
 
@@ -136,6 +116,34 @@ function getStatusBadge($status)
             border-collapse: collapse;
             color: var(--text-main);
         }
+    
+    <!-- Модал для очистки отчётов (глобально) -->
+    <div class="modal-overlay" id="clear-reports-modal">
+        <div class="modal-box">
+            <h3>🧹 Очистить отчёты мастера</h3>
+            <p style="color:#94A3B8;">Выберите мастера, чьи отчёты нужно удалить (будет удалено всё):</p>
+            <form method="POST">
+                <input type="hidden" name="action" value="clear_reports">
+                <div style="margin: 0.75rem 0;">
+                    <select name="master" style="width:100%; padding:0.6rem; border-radius:8px; background:#0F172A; border:1px solid rgba(255,255,255,0.06); color:white;">
+                        <?php foreach ($myMasters as $m): ?>
+                            <option value="<?= htmlspecialchars($m) ?>"><?= htmlspecialchars($m) ?> (<?= $totalCounts[$m] ?? 0 ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+                    <button type="button" class="btn-add" style="background: grey;" onclick="document.getElementById('clear-reports-modal').classList.remove('active')">Отмена</button>
+                    <button type="submit" class="btn-delete">Удалить отчёты</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('open-clear-modal').addEventListener('click', function () {
+            document.getElementById('clear-reports-modal').classList.add('active');
+        });
+    </script>
 
         .report-table th,
         .report-table td {
@@ -207,29 +215,7 @@ function getStatusBadge($status)
                     </div>
                 </div>
     
-                    <!-- Модал подтверждения удаления мастера -->
-                    <div class="modal-overlay" id="delete-master-modal">
-                        <div class="modal-box">
-                            <h3>🗑 Удалить мастера?</h3>
-                            <p id="del-master-name" style="color: #EF4444; margin: 1rem 0; font-weight: 600;"></p>
-                            <form method="POST">
-                                <input type="hidden" name="action" value="delete_master">
-                                <input type="hidden" name="master" id="del-master-input">
-                                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
-                                    <button type="button" class="btn-add" style="background: grey;" onclick="document.getElementById('delete-master-modal').classList.remove('active')">Отмена</button>
-                                    <button type="submit" class="btn-delete">Да, удалить</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <script>
-                        function openDeleteMasterModal(name) {
-                            document.getElementById('del-master-input').value = name;
-                            document.getElementById('del-master-name').textContent = name;
-                            document.getElementById('delete-master-modal').classList.add('active');
-                        }
-                    </script>
+                    <!-- Удаление мастера убрано по запросу; очистка отчётов доступна в шапке карточки "Все отчеты" -->
             </header>
 
             <section class="content">
@@ -248,24 +234,11 @@ function getStatusBadge($status)
                                 <?php foreach ($myMasters as $mNick): 
                                     $totalForMaster = $totalCounts[$mNick] ?? 0;
                                 ?>
-                                    <div
-                                        style="background: rgba(167, 139, 250, 0.05); color: #F1F5F9; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.15); font-size: 0.95rem; font-weight: 500; display: flex; flex-direction: column; gap: 0.4rem; min-width: 200px;">
+                                    <div style="background: rgba(167, 139, 250, 0.05); color: #F1F5F9; padding: 0.6rem 1rem; border-radius: 10px; border: 1px solid rgba(167, 139, 250, 0.15); font-size: 0.95rem; font-weight: 500; display: flex; flex-direction: column; gap: 0.4rem; min-width: 200px;">
                                         <div style="display:flex; align-items:center; gap:0.5rem; justify-content: space-between;">
                                             <div style="display:flex; align-items:center; gap:0.5rem;">
-                                                <div
-                                                    style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);">
-                                                </div>
+                                                <div style="width: 8px; height: 8px; background: #10B981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);"></div>
                                                 <div style="font-weight:600; color:#EDE9FE;"><?= htmlspecialchars($mNick) ?></div>
-                                            </div>
-                                            <div style="display:flex; gap:6px; align-items:center;">
-                                                <form method="POST" style="display:inline;">
-                                                    <input type="hidden" name="action" value="clear_reports">
-                                                    <input type="hidden" name="master" value="<?= htmlspecialchars($mNick) ?>">
-                                                    <button type="submit" class="btn-delete" style="background: rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.18);">🧹 Очистить отчёты</button>
-                                                </form>
-                                                <?php if ($role === 'admin'): ?>
-                                                    <button class="btn-delete" onclick="openDeleteMasterModal('<?= htmlspecialchars($mNick) ?>')" title="Удалить мастера">🗑</button>
-                                                <?php endif; ?>
                                             </div>
                                         </div>
                                         <div style="font-size:0.85rem; color:#C4B5FD; background: rgba(167,139,250,0.04); padding: 4px 8px; border-radius: 8px; width: fit-content;">
@@ -281,11 +254,15 @@ function getStatusBadge($status)
                 <?php endif; ?>
 
                 <div class="card glass" style="grid-column: 1 / -1;">
-                    <div class="card-header">
-                        <h3>Все отчеты</h3>
-                        <span class="status info"
-                            style="background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3);">Требуют
-                            проверки</span>
+                    <div class="card-header" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <h3 style="margin:0">Все отчеты</h3>
+                            <span class="status info"
+                                style="background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3);">Требуют проверки</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button id="open-clear-modal" class="btn-delete" style="background: rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.18); padding:6px 10px;">🧹 Очистить отчёты</button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
