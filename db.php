@@ -37,21 +37,6 @@ try {
     } catch (PDOException $e) {
     }
 
-    try {
-        $pdo->exec("ALTER TABLE reports ADD COLUMN rollback_file VARCHAR(255) NULL");
-    } catch (PDOException $e) {
-    }
-
-    try {
-        $pdo->exec("ALTER TABLE reports ADD COLUMN file_type VARCHAR(50) NULL");
-    } catch (PDOException $e) {
-    }
-
-    try {
-        $pdo->exec("ALTER TABLE reports ADD COLUMN file_size INT NULL");
-    } catch (PDOException $e) {
-    }
-
     // Таблица пользователей
     $pdo->exec("CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,

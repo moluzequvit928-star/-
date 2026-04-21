@@ -25,10 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $master_name = $_SESSION['username'] ?? 'Неизвестный мастер';
 
     $newFileName = '';
-    $rollbackFileName = '';
     $uploadSuccess = true;
-    $fileType = null;
-    $fileSize = null;
 
     // Обработка скриншота/изображения отчета
     if (isset($_FILES['report_file']) && $_FILES['report_file']['error'] === UPLOAD_ERR_OK) {
@@ -36,9 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileName = $_FILES['report_file']['name'];
         $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-        // Разрешенные форматы для скриншотов и видео (mp4)
-        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4'];
-        
+        // Разрешенные форматы для скриншотов (только изображения)
+        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
         // Проверяем расширение
         if (!in_array($fileExtension, $allowedExts)) {
             $uploadSuccess = false;
@@ -67,55 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $messageType = 'error';
     }
 
-    // Обработка файла отката (архива) - опционально
-    if ($uploadSuccess && isset($_FILES['rollback_file']) && $_FILES['rollback_file']['error'] === UPLOAD_ERR_OK) {
-        $rollbackTmpPath = $_FILES['rollback_file']['tmp_name'];
-        $rollbackFileName_orig = $_FILES['rollback_file']['name'];
-        $rollbackExtension = strtolower(pathinfo($rollbackFileName_orig, PATHINFO_EXTENSION));
-
-        // Разрешенные форматы для откатов/архивов
-        $allowedArchiveExts = ['zip', 'rar', '7z', 'tar', 'gz', 'tar.gz', 'tgz', 'tar.bz2', 'tbz2'];
-        
-        // Проверяем расширение
-        if (!in_array($rollbackExtension, $allowedArchiveExts)) {
-            // Пытаемся определить по полному имени для .tar.gz и т.д.
-            $basename_parts = explode('.', $rollbackFileName_orig);
-            $combined_ext = implode('.', array_slice($basename_parts, -2));
-            if (!in_array($combined_ext, $allowedArchiveExts)) {
-                $message = 'Неподдерживаемый формат архива. Используйте: ZIP, RAR, 7Z, TAR, GZ, TAR.GZ и т.д.';
-                $messageType = 'warning';
-            }
-        }
-        
-        if ($messageType !== 'warning') {
-            $fileSize = filesize($rollbackTmpPath);
-            $maxSize = 500 * 1024 * 1024; // 500 MB
-            
-            if ($fileSize > $maxSize) {
-                $uploadSuccess = false;
-                $message = 'Файл отката слишком большой. Максимум: 500 MB';
-                $messageType = 'error';
-            } else {
-                // Генерация уникального имени для отката
-                $rollbackFileName = uniqid('rollback_') . '.' . $rollbackExtension;
-                $rollbackFileDir = __DIR__ . '/rollbacks/';
-
-                if (!is_dir($rollbackFileDir)) {
-                    mkdir($rollbackFileDir, 0777, true);
-                }
-
-                $rollback_dest_path = $rollbackFileDir . $rollbackFileName;
-
-                if (!move_uploaded_file($rollbackTmpPath, $rollback_dest_path)) {
-                    $uploadSuccess = false;
-                    $message = 'Произошла ошибка при сохранении файла отката.';
-                    $messageType = 'error';
-                } else {
-                    $fileType = $rollbackExtension;
-                }
-            }
-        }
-    }
+    // (Откаты отключены) — ранее тут обрабатывались архивы откатов, теперь удалено.
 
     if ($uploadSuccess) {
         // ЗАЩИТА ОТ ДУБЛИКАТОВ (АНТИ-СПАМ 10 секунд)
@@ -127,8 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, candidate_nickname, invited, screenshot_path, comment, rollback_file, file_type, file_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            if ($stmt->execute([$master_name, $candidate, $candidate_nickname, $invited, $newFileName, $comment, $rollbackFileName, $fileType, $fileSize])) {
+            $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, candidate_nickname, invited, screenshot_path, comment) VALUES (?, ?, ?, ?, ?, ?)");
+            if ($stmt->execute([$master_name, $candidate, $candidate_nickname, $invited, $newFileName, $comment])) {
                 header('Location: reports.php?status=success');
                 exit;
             } else {
@@ -136,8 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $messageType = 'error';
             }
         } catch (PDOException $e) {
-            $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, invited, screenshot_path, comment, rollback_file, file_type, file_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            if ($stmt->execute([$master_name, $candidate, $invited, $newFileName, $comment, $rollbackFileName, $fileType, $fileSize])) {
+            $stmt = $pdo->prepare("INSERT INTO reports (master_name, candidate_id, invited, screenshot_path, comment) VALUES (?, ?, ?, ?, ?)");
+            if ($stmt->execute([$master_name, $candidate, $invited, $newFileName, $comment])) {
                 header('Location: reports.php?status=success');
                 exit;
             } else {
@@ -323,7 +272,7 @@ function getStatusBadgeForMaster($status)
                                             чтобы вставить скриншот</p>
                                     </div>
                                     <!-- Важно: убран 'required', так как файл ставится через JS (иногда DataTransfer теряет required на некоторых браузерах), но добавлена проверка -->
-                                    <input type="file" id="report_file" name="report_file" accept="image/*,video/mp4"
+                                    <input type="file" id="report_file" name="report_file" accept="image/*"
                                         style="display: none;" required>
 
                                     <!-- Блок превью файла -->
@@ -332,7 +281,7 @@ function getStatusBadgeForMaster($status)
                                         <div style="position: relative; width: 100%;">
                                             <img id="image-preview" src="" alt="Превью"
                                                 style="width: 100%; max-height: 350px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none;">
-                                            <video id="video-preview" controls style="width: 100%; max-height: 350px; object-fit: contain; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: none; background: black;"></video>
+                                            <!-- video support removed -->
                                             <button type="button" id="remove-file-btn"
                                                 style="position: absolute; top: 8px; right: 8px; background: #EF4444; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✕</button>
                                         </div>
@@ -342,35 +291,7 @@ function getStatusBadgeForMaster($status)
                                 </div>
                             </div>
 
-                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                <label style="font-weight: 500; color: var(--text-main);">Файл отката (опционально):
-                                    <span style="font-size: 0.85rem; color: #94A3B8; font-weight: 400;">поддерживаются архивы до 500MB</span>
-                                </label>
-                                <div id="rollback-drop-zone"
-                                    style="border: 2px dashed rgba(168, 85, 247, 0.5); border-radius: 8px; padding: 1.5rem; text-align: center; background: rgba(15, 23, 42, 0.6); cursor: pointer; transition: all 0.2s; position: relative;">
-                                    <div id="rollback-drop-zone-text">
-                                        <p style="color: var(--text-muted); margin-bottom: 0.5rem; font-size: 0.9rem;">📦 Нажмите для загрузки архива отката</p>
-                                        <p style="font-size: 0.8rem; color: #64748B;">ZIP • RAR • 7Z • TAR • GZ и т.д.</p>
-                                    </div>
-                                    <input type="file" id="rollback_file" name="rollback_file" 
-                                        accept=".zip,.rar,.7z,.tar,.gz,.tar.gz,.tgz,.tar.bz2,.tbz2"
-                                        style="display: none;">
-
-                                    <!-- Блок превью для отката -->
-                                    <div id="rollback-preview-container"
-                                        style="display: none; flex-direction: column; gap: 0.5rem; width: 100%;">
-                                        <div style="position: relative; width: 100%; text-align: center;">
-                                            <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; padding: 1rem; color: #C4B5FD;">
-                                                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📦</div>
-                                                <div id="rollback-file-info" style="font-weight: 500;"></div>
-                                                <div id="rollback-file-size" style="font-size: 0.85rem; color: #A78BFA; margin-top: 0.25rem;"></div>
-                                            </div>
-                                            <button type="button" id="remove-rollback-btn"
-                                                style="position: absolute; top: 8px; right: 8px; background: #EF4444; color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">✕</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Блок загрузки откатов удалён по запросу -->
 
                             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                                 <label for="comment" style="font-weight: 500; color: var(--text-main);">Комментарий
@@ -450,12 +371,7 @@ function getStatusBadgeForMaster($status)
                                                 <?php else: ?>
                                                     <span style="color: #64748B; font-size: 0.85rem; font-style: italic; padding: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 6px; display: inline-block; text-align: center;">Без скриншота</span>
                                                 <?php endif; ?>
-                                                <?php if ($report['rollback_file']): ?>
-                                                    <a href="rollbacks/<?= htmlspecialchars($report['rollback_file']) ?>" download
-                                                        style="color: white; font-size: 0.9rem; text-decoration: none; padding: 0.5rem 0.8rem; background: rgba(168,85,247,0.6); border: 1px solid rgba(168,85,247,1); border-radius: 6px; transition: all 0.2s; display: inline-block; text-align: center;" onmouseover="this.style.background='rgba(168,85,247,0.8)'; this.style.transform='scale(1.02)'" onmouseout="this.style.background='rgba(168,85,247,0.6)'; this.style.transform='scale(1)'">
-                                                        📦 Откат (<?= htmlspecialchars($report['file_type'] ?? 'архив') ?>) - <?= $report['file_size'] ? round($report['file_size']/1024/1024, 1).' MB' : '?' ?>
-                                                    </a>
-                                                <?php endif; ?>
+                                                <!-- Откаты отключены -->
                                             </div>
                                         </div>
                                     </li>
@@ -478,8 +394,7 @@ function getStatusBadgeForMaster($status)
             onclick="closeModal()" onmouseover="this.style.color='#EF4444'"
             onmouseout="this.style.color='white'">&times;</span>
         <img id="modal-img" src=""
-            style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none;">
-        <video id="modal-video" controls style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; background: black;"></video>
+            style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
     </div>
 
     <!-- Script to handle modal -->
@@ -487,24 +402,13 @@ function getStatusBadgeForMaster($status)
         function openModal(src) {
             const modal = document.getElementById('image-modal');
             const img = document.getElementById('modal-img');
-            const vid = document.getElementById('modal-video');
-            // Очистим оба
-            img.style.display = 'none'; img.src = '';
-            vid.style.display = 'none'; vid.pause(); vid.src = '';
-
-            if (/\.mp4$/i.test(src)) {
-                vid.src = src;
-                vid.style.display = 'block';
-            } else {
-                img.src = src;
-                img.style.display = 'block';
-            }
+            img.src = src;
             modal.style.display = 'flex';
         }
         function closeModal() {
             const modal = document.getElementById('image-modal');
-            const vid = document.getElementById('modal-video');
-            if (vid) { vid.pause(); vid.src = ''; }
+            const img = document.getElementById('modal-img');
+            if (img) { img.src = ''; }
             modal.style.display = 'none';
         }
         // Закрытие по клику вне картинки
@@ -519,7 +423,7 @@ function getStatusBadgeForMaster($status)
         });
     </script>
 
-    <!-- Script to handle file uploads and pasting -->
+    <!-- Script to handle file uploads and pasting (images only) -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const dropZone = document.getElementById('drop-zone');
@@ -527,194 +431,54 @@ function getStatusBadgeForMaster($status)
             const fileInput = document.getElementById('report_file');
             const previewContainer = document.getElementById('file-preview-container');
             const imagePreview = document.getElementById('image-preview');
-            const videoPreview = document.getElementById('video-preview');
             const filePreviewText = document.getElementById('file-preview-text');
             const removeBtn = document.getElementById('remove-file-btn');
 
-            // Click to open file dialog, but prevent if clicking on the remove button or image
             dropZone.addEventListener('click', (e) => {
                 if (e.target !== removeBtn && e.target !== imagePreview) {
                     fileInput.click();
                 }
             });
 
-            // Handle file selection
             fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    showFile(e.target.files[0]);
-                }
+                if (e.target.files.length > 0) showImage(e.target.files[0]);
             });
 
-            // Remove file
             removeBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Не открывать окно выбора файлов
-                fileInput.value = ''; // Очищаем input
-
-                // Сбрасываем UI
+                e.stopPropagation();
+                fileInput.value = '';
                 previewContainer.style.display = 'none';
                 dropZoneText.style.display = 'block';
                 dropZone.style.borderColor = 'rgba(99, 102, 241, 0.5)';
                 dropZone.style.background = 'rgba(15, 23, 42, 0.6)';
-                // очистка видео
-                if (videoPreview) { videoPreview.pause(); videoPreview.src = ''; videoPreview.style.display = 'none'; }
                 if (imagePreview) { imagePreview.src = ''; imagePreview.style.display = 'none'; }
             });
 
-            // Handle Ctrl+V paste capability across the document
             document.addEventListener('paste', (e) => {
                 if (e.clipboardData && e.clipboardData.files.length > 0) {
-                    const pastedFile = e.clipboardData.files[0];
-                    if (pastedFile.type.startsWith('image/') || pastedFile.type.startsWith('video/')) {
-                        const dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(pastedFile);
-                        fileInput.files = dataTransfer.files;
-                        showFile(pastedFile);
+                    const pasted = e.clipboardData.files[0];
+                    if (pasted.type && pasted.type.startsWith('image/')) {
+                        const dt = new DataTransfer(); dt.items.add(pasted); fileInput.files = dt.files; showImage(pasted);
                     }
                 }
             });
 
-            function showFile(file) {
+            function showImage(file) {
+                if (!file || !file.type || !file.type.startsWith('image/')) return;
+                const url = URL.createObjectURL(file);
+                imagePreview.src = url;
+                imagePreview.onload = () => URL.revokeObjectURL(url);
+                imagePreview.style.display = 'block';
                 dropZoneText.style.display = 'none';
                 previewContainer.style.display = 'flex';
-                filePreviewText.textContent = `${file.name || 'Скриншот из буфера'} (${(file.size / 1024).toFixed(1)} KB)`;
-
-                // Если это картинка, показываем превью картинки
-                if (file.type.startsWith('image/')) {
-                    const objectUrl = URL.createObjectURL(file);
-                    imagePreview.src = objectUrl;
-                    imagePreview.onload = () => URL.revokeObjectURL(objectUrl);
-                    imagePreview.style.display = 'block';
-                    if (videoPreview) { videoPreview.pause(); videoPreview.src = ''; videoPreview.style.display = 'none'; }
-                } else if (file.type.startsWith('video/') || file.name.match(/\.mp4$/i)) {
-                    // Видео (mp4) превью
-                    const objectUrl = URL.createObjectURL(file);
-                    videoPreview.src = objectUrl;
-                    videoPreview.onloadeddata = () => URL.revokeObjectURL(objectUrl);
-                    videoPreview.style.display = 'block';
-                    if (imagePreview) { imagePreview.src = ''; imagePreview.style.display = 'none'; }
-                } else {
-                    if (imagePreview) imagePreview.style.display = 'none';
-                    if (videoPreview) videoPreview.style.display = 'none';
-                }
-
+                filePreviewText.textContent = `${file.name || 'Скриншот из буфера'} (${(file.size/1024).toFixed(1)} KB)`;
                 dropZone.style.borderColor = '#10B981';
                 dropZone.style.background = 'rgba(16, 185, 129, 0.05)';
             }
 
-            // Drag and Drop
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                if (fileInput.files.length === 0) {
-                    dropZone.style.borderColor = '#6366F1';
-                    dropZone.style.background = 'rgba(99, 102, 241, 0.1)';
-                }
-            });
-            dropZone.addEventListener('dragleave', () => {
-                if (fileInput.files.length === 0) {
-                    dropZone.style.borderColor = 'rgba(99, 102, 241, 0.5)';
-                    dropZone.style.background = 'rgba(15, 23, 42, 0.6)';
-                }
-            });
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                if (e.dataTransfer.files.length > 0) {
-                    const droppedFile = e.dataTransfer.files[0];
-                    if (droppedFile.type.startsWith('image/') || droppedFile.type.startsWith('video/') || droppedFile.name.match(/\.mp4$/i)) {
-                        fileInput.files = e.dataTransfer.files;
-                        showFile(droppedFile);
-                    }
-                }
-            });
-
-            // ========== ОБРАБОТКА ФАЙЛОВ ОТКАТОВ (АРХИВОВ) ==========
-            const rollbackDropZone = document.getElementById('rollback-drop-zone');
-            const rollbackDropZoneText = document.getElementById('rollback-drop-zone-text');
-            const rollbackFileInput = document.getElementById('rollback_file');
-            const rollbackPreviewContainer = document.getElementById('rollback-preview-container');
-            const rollbackFileInfo = document.getElementById('rollback-file-info');
-            const rollbackFileSize = document.getElementById('rollback-file-size');
-            const removeRollbackBtn = document.getElementById('remove-rollback-btn');
-
-            const allowedArchiveTypes = [
-                'application/zip',
-                'application/x-zip-compressed',
-                'application/x-rar-compressed',
-                'application/x-7z-compressed',
-                'application/gzip',
-                'application/x-tar',
-                'application/x-gzip',
-                'application/x-bzip2'
-            ];
-
-            rollbackDropZone.addEventListener('click', (e) => {
-                if (e.target !== removeRollbackBtn) {
-                    rollbackFileInput.click();
-                }
-            });
-
-            rollbackFileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    handleRollbackFile(e.target.files[0]);
-                }
-            });
-
-            removeRollbackBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                rollbackFileInput.value = '';
-                rollbackPreviewContainer.style.display = 'none';
-                rollbackDropZoneText.style.display = 'block';
-                rollbackDropZone.style.borderColor = 'rgba(168, 85, 247, 0.5)';
-                rollbackDropZone.style.background = 'rgba(15, 23, 42, 0.6)';
-            });
-
-            function handleRollbackFile(file) {
-                const isArchive = file.name.match(/\.(zip|rar|7z|tar|gz|tar\.gz|tgz|tar\.bz2|tbz2)$/i);
-                
-                if (!isArchive) {
-                    alert('Пожалуйста, загрузите архив (ZIP, RAR, 7Z, TAR, GZ и т.д.)');
-                    return;
-                }
-
-                const maxSize = 500 * 1024 * 1024; // 500 MB
-                if (file.size > maxSize) {
-                    alert('Файл слишком большой. Максимум: 500 MB');
-                    return;
-                }
-
-                const sizeInMB = (file.size / 1024 / 1024).toFixed(2);
-                rollbackFileInfo.textContent = file.name;
-                rollbackFileSize.textContent = `${sizeInMB} MB`;
-
-                rollbackDropZoneText.style.display = 'none';
-                rollbackPreviewContainer.style.display = 'flex';
-                rollbackDropZone.style.borderColor = '#A78BFA';
-                rollbackDropZone.style.background = 'rgba(168, 85, 247, 0.05)';
-            }
-
-            // Drag and Drop для откатов
-            rollbackDropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                if (rollbackFileInput.files.length === 0) {
-                    rollbackDropZone.style.borderColor = '#A78BFA';
-                    rollbackDropZone.style.background = 'rgba(168, 85, 247, 0.1)';
-                }
-            });
-            rollbackDropZone.addEventListener('dragleave', () => {
-                if (rollbackFileInput.files.length === 0) {
-                    rollbackDropZone.style.borderColor = 'rgba(168, 85, 247, 0.5)';
-                    rollbackDropZone.style.background = 'rgba(15, 23, 42, 0.6)';
-                }
-            });
-            rollbackDropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                if (e.dataTransfer.files.length > 0) {
-                    const droppedFile = e.dataTransfer.files[0];
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(droppedFile);
-                    rollbackFileInput.files = dataTransfer.files;
-                    handleRollbackFile(droppedFile);
-                }
-            });
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); if (fileInput.files.length === 0) { dropZone.style.borderColor = '#6366F1'; dropZone.style.background = 'rgba(99, 102, 241, 0.1)'; } });
+            dropZone.addEventListener('dragleave', () => { if (fileInput.files.length === 0) { dropZone.style.borderColor = 'rgba(99, 102, 241, 0.5)'; dropZone.style.background = 'rgba(15, 23, 42, 0.6)'; } });
+            dropZone.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer.files.length > 0) { const f = e.dataTransfer.files[0]; if (f.type && f.type.startsWith('image/')) { fileInput.files = e.dataTransfer.files; showImage(f); } } });
         });
     </script>
     <script>
