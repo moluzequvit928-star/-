@@ -388,27 +388,36 @@ function getStatusBadgeForMaster($status)
 
     <!-- Модальное окно для картинок/видео -->
     <div id="image-modal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(6px); padding: 20px; box-sizing: border-box;">
         <span
             style="position: absolute; top: 20px; right: 30px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; transition: 0.2s;"
             onclick="closeModal()" onmouseover="this.style.color='#EF4444'"
             onmouseout="this.style.color='white'">&times;</span>
         <img id="modal-img" src=""
-            style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none;">
-        <video id="modal-video" controls style="max-width: 90%; max-height: 90%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; background: black;"></video>
+            style="max-width: 96vw; max-height: 96vh; width: auto; height: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none;">
+        <video id="modal-video" controls style="max-width: 96vw; max-height: 96vh; width: auto; height: auto; object-fit: contain; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; background: black;"></video>
     </div>
 
     <!-- Script to handle modal -->
     <script>
-        function openModal(src) {
+        function openModal(src, type = 'auto') {
             const modal = document.getElementById('image-modal');
             const img = document.getElementById('modal-img');
             const vid = document.getElementById('modal-video');
             // Сброс
             if (img) { img.src = ''; img.style.display = 'none'; }
-            if (vid) { vid.pause(); vid.src = ''; vid.style.display = 'none'; }
+            if (vid) { try { vid.pause(); } catch(e){} vid.src = ''; vid.style.display = 'none'; }
 
-            if (/\.mp4$/i.test(src) || src.indexOf('video/') !== -1) {
+            // Определяем тип: переданное значение, расширение или по видимости blob/video element
+            let showVideo = false;
+            if (type === 'video') showVideo = true;
+            else if (type === 'image') showVideo = false;
+            else if (/\.mp4$/i.test(src)) showVideo = true;
+            else if (src && src.startsWith('blob:') && typeof vid !== 'undefined') {
+                showVideo = false;
+            }
+
+            if (showVideo) {
                 vid.src = src;
                 vid.style.display = 'block';
             } else {
@@ -452,6 +461,16 @@ function getStatusBadgeForMaster($status)
                 dropZone.style.background = 'rgba(15, 23, 42, 0.6)';
                 if (imagePreview) { imagePreview.src = ''; imagePreview.style.display = 'none'; }
                 if (videoPreview) { videoPreview.pause(); videoPreview.src = ''; videoPreview.style.display = 'none'; }
+            }
+
+            // Клик по превью открывает модал в полноэкранном режиме
+            if (imagePreview) {
+                imagePreview.style.cursor = 'zoom-in';
+                imagePreview.addEventListener('click', (e) => { e.stopPropagation(); if (imagePreview.src) openModal(imagePreview.src, 'image'); });
+            }
+            if (videoPreview) {
+                videoPreview.style.cursor = 'zoom-in';
+                videoPreview.addEventListener('click', (e) => { e.stopPropagation(); if (videoPreview.src) openModal(videoPreview.src, 'video'); });
             }
 
             dropZone.addEventListener('click', (e) => {
