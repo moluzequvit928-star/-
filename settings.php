@@ -16,6 +16,7 @@ require_once 'user_header.php';
     <link rel="icon" type="image/png" href="favicon_futurama_staff_1776084855108.png">
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .theme-grid {
             display: grid;
@@ -84,13 +85,13 @@ require_once 'user_header.php';
                             <!-- Тема: Алая (Red) -->
                             <div class="theme-card" id="theme-red" onclick="setTheme('red')">
                                 <div class="theme-preview" style="background: #1a0505; border: 4px solid #ff0000;"></div>
-                                <span style="font-weight: 600; color: #cc0000;">Красно-алая</span>
+                                <span style="font-weight: 600;">Красно-алая</span>
                             </div>
 
                             <!-- Тема: Светлая (Light) -->
                             <div class="theme-card" id="theme-light" onclick="setTheme('light')">
                                 <div class="theme-preview" style="background: #F1F5F9; border: 4px solid #FFFFFF;"></div>
-                                <span style="font-weight: 600; color: #0F172A;">Светлая</span>
+                                <span style="font-weight: 600;">Светлая</span>
                             </div>
                         </div>
                     </div>

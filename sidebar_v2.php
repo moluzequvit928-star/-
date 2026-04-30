@@ -1,72 +1,97 @@
 <?php
-$current_page = basename($_SERVER['PHP_SELF']);
-
-// Гарантируем наличие переменной для счетчика отчетов
-if (!isset($sidebarPendingCount)) {
-    try {
-        if (isset($pdo)) {
-            $stmtPending = $pdo->query("SELECT COUNT(*) FROM reports WHERE status = 'pending'");
-            $sidebarPendingCount = (int)$stmtPending->fetchColumn();
-        } else {
-            $sidebarPendingCount = 0;
-        }
-    } catch (Exception $e) {
-        $sidebarPendingCount = 0;
-    }
-}
-//SIDEBAR VERSION 2.2 - ROLE FIX
+$currentPage = basename($_SERVER['PHP_SELF']);
 $role = $_SESSION['role'] ?? 'master';
+$total_users = 0;
+try {
+    if (isset($pdo)) {
+        $stmtCount = $pdo->query("SELECT COUNT(*) FROM users");
+        $total_users = $stmtCount->fetchColumn();
+    }
+} catch (Exception $e) {}
 ?>
-<!-- SIDEBAR VERSION 2.2 - NO MORE DISAPPEARING -->
-<aside class="sidebar glass">
-    <div class="logo">
-        <h2 style="letter-spacing: 1px;">Панель </h2>
+<aside class="sidebar">
+    <div class="sidebar-header" style="padding-top: 1rem; margin-bottom: 2.5rem;">
+        <div class="logo" style="font-size: 1.6rem; display: flex; align-items: center;">
+            <i class="fas fa-rocket" style="color: #A78BFA; margin-right: 12px; font-size: 1.4rem;"></i>
+            <span>Futurama <span style="color: #A78BFA; font-weight: 800;">Staff</span></span>
+        </div>
     </div>
-    <nav class="menu">
-        <a href="index.php" class="menu-item <?= $current_page === 'index.php' || $current_page === '' ? 'active' : '' ?>">Главная</a>
-        
-        <?php if ($role === 'admin'): ?>
-            <a href="admin_stats.php" class="menu-item <?= $current_page === 'admin_stats.php' ? 'active' : '' ?>">Статистика</a>
-            <a href="users_manage.php" class="menu-item <?= $current_page === 'users_manage.php' ? 'active' : '' ?>" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>Пользователи</span>
-                <?php
-                try {
-                    if (isset($pdo)) {
-                        $stmtCount = $pdo->query("SELECT COUNT(*) FROM users");
-                        $totalUsers = $stmtCount->fetchColumn();
-                        echo '<span style="background: var(--accent); color: white; font-size: 0.75rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; line-height: 1.6; min-width: 20px; text-align: center;">' . $totalUsers . '</span>';
-                    }
-                } catch (Exception $e) {}
-                ?>
-            </a>
-        <?php endif; ?>
 
-        <?php if ($role === 'admin' || $role === 'curator' || $role === 'chief'): ?>
-            <a href="reattestation.php" class="menu-item <?= $current_page === 'reattestation.php' ? 'active' : '' ?>">Переаттестация</a>
-            <a href="reattestation_archive.php" class="menu-item <?= $current_page === 'reattestation_archive.php' ? 'active' : '' ?>">Архив переаттестаций</a>
-            <a href="check_reports.php" class="menu-item <?= $current_page === 'check_reports.php' ? 'active' : '' ?>"
-                style="display: flex; justify-content: space-between; align-items: center;">
-                <span>Проверка отчетов</span>
-                <?php if ($sidebarPendingCount > 0): ?>
-                    <span
-                        style="background: #EF4444; color: white; font-size: 0.75rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; line-height: 1.6; min-width: 20px; text-align: center;"><?= $sidebarPendingCount ?></span>
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            <div class="nav-label">ОСНОВНОЕ</div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="profile.php" class="nav-link <?= $currentPage === 'profile.php' ? 'active' : '' ?>">
+                        <i class="fas fa-user-circle"></i> <span>Профиль</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="index.php" class="nav-link <?= $currentPage === 'index.php' ? 'active' : '' ?>">
+                        <i class="fas fa-th-large"></i> <span>Главная</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-label">УПРАВЛЕНИЕ</div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="reattestation.php" class="nav-link <?= $currentPage === 'reattestation.php' ? 'active' : '' ?>">
+                        <i class="fas fa-file-signature"></i> <span>Переаттестация</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="reattestation_archive.php" class="nav-link <?= $currentPage === 'reattestation_archive.php' ? 'active' : '' ?>">
+                        <i class="fas fa-archive"></i> <span>Архив</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-label">РЕСУРСЫ</div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="https://docs.google.com/spreadsheets/d/1w2r_C3R7kh5CDvlehOHOjd3DPnvCMBQ9SnXZnB6t754/edit" target="_blank" class="nav-link">
+                        <i class="fas fa-table"></i> <span>Таблица Google</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="https://docs.google.com/document/d/1tef_iQ0GuuIVgQRI15Ql8H74BFPjEcI9Cg3qZCQrtL8/edit?tab=t.0" target="_blank" class="nav-link">
+                        <i class="fas fa-user-plus"></i> <span>Собеседование</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-label">СИСТЕМА</div>
+            <ul class="nav-menu">
+                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
+                <li class="nav-item">
+                    <a href="users_manage.php" onclick="window.location.href='users_manage.php'; return true;" class="nav-link <?= $currentPage === 'users_manage.php' ? 'active' : '' ?>">
+                        <i class="fas fa-users-cog"></i> <span>Пользователи</span>
+                        <?php if ($total_users > 0): ?>
+                            <span class="badge"><?= $total_users ?></span>
+                        <?php endif; ?>
+                    </a>
+                </li>
                 <?php endif; ?>
-            </a>
-        <?php endif; ?>
-
-        <?php if ($role === 'master'): ?>
-            <a href="master_info.php" class="menu-item <?= $current_page === 'master_info.php' ? 'active' : '' ?>">Информация</a>
-        <?php endif; ?>
-
-        <div class="menu-section-title">Полезные ссылки</div>
-        <a href="https://docs.google.com/spreadsheets/d/1w2r_C3R7kh5CDvlehOHOjd3DPnvCMBQ9SnXZnB6t754/edit"
-            class="menu-item highlight" target="_blank">Google Таблица ↗</a>
-        <a href="https://docs.google.com/document/d/1tef_iQ0GuuIVgQRI15Ql8H74BFPjEcI9Cg3qZCQrtL8/edit"
-            class="menu-item highlight" target="_blank">Собес на саппорта ↗</a>
-
-        <div class="menu-section-title">Работа</div>
-        <a href="reports.php" class="menu-item <?= $current_page === 'reports.php' ? 'active' : '' ?>">Отчеты по наборам</a>
-        <a href="#add_support" data-ajax="add_support.php" class="menu-item <?= $current_page === 'add_support.php' ? 'active' : '' ?>">Добавить саппорта</a>
-        <a href="settings.php" class="menu-item <?= $current_page === 'settings.php' ? 'active' : '' ?>">Настройки ⚙️</a>
+                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
+                <li class="nav-item">
+                    <a href="add_support.php" class="nav-link <?= $currentPage === 'add_support.php' ? 'active' : '' ?>">
+                        <i class="fas fa-plus-circle"></i> <span>Добавить саппорта</span>
+                    </a>
+                </li>
+                <?php endif; ?>
+                <li class="nav-item">
+                    <a href="settings.php" class="nav-link <?= $currentPage === 'settings.php' ? 'active' : '' ?>">
+                        <i class="fas fa-cog"></i> <span>Настройки</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
     </nav>
 </aside>

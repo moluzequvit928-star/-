@@ -1,174 +1,283 @@
 <?php
 session_start();
-require_once 'db.php';
-$config = @include __DIR__ . '/app_config.php';
-
 if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true) {
     header('Location: login.php');
     exit;
 }
-
-$isAjaxFragment = isset($_GET['ajax']) && $_GET['ajax'];
-$isAjaxRequest = $isAjaxFragment || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
-
-$response = ['ok' => false, 'error' => null, 'message' => null];
-
-// Handle POST submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nick = trim($_POST['nick'] ?? '');
-    $discord = trim($_POST['discord_id'] ?? '');
-    $shift = intval($_POST['shift'] ?? 0);
-    $start_at = trim($_POST['start_at'] ?? '');
-
-    if ($nick === '' || $discord === '') {
-        $response['error'] = 'Ник и ID обязательны.';
-    } elseif ($shift < 0 || $shift > 12) {
-        $response['error'] = 'Выберите корректную смену (0-12).';
-    } else {
-        $webhook = $config['app_script_webhook_url'] ?? '';
-        $token = $config['app_script_webhook_token'] ?? '';
-
-        if (!$webhook) {
-            $response['error'] = 'Webhook не настроен в app_config.php';
-        } else {
-            $payload = [
-                'token' => $token,
-                'action' => 'append_staff_row',
-                'nick' => $nick,
-                'discord_id' => $discord,
-                'shift' => $shift,
-                'start_at' => $start_at,
-                'added_by' => $_SESSION['username'] ?? 'unknown'
-            ];
-
-            $ch = curl_init($webhook);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            $res = curl_exec($ch);
-            $err = curl_error($ch);
-            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($res === false || $code >= 400) {
-                $response['error'] = 'Ошибка при отправке в Apps Script: ' . ($err ?: $res);
-                $response['raw'] = $res ?: $err;
-            } else {
-                // Try parse JSON response from Apps Script
-                $decoded = json_decode($res, true);
-                if (is_array($decoded) && isset($decoded['error'])) {
-                    $response['error'] = 'Apps Script: ' . $decoded['error'];
-                    $response['raw'] = $res;
-                } elseif (is_array($decoded) && isset($decoded['ok']) && $decoded['ok']) {
-                    $response['ok'] = true;
-                    $response['message'] = 'Данные отправлены в таблицу.';
-                } else {
-                    // Unknown but HTTP OK
-                    $response['ok'] = true;
-                    $response['message'] = 'Данные отправлены (без явного подтверждения от сервиса).';
-                    $response['raw'] = $res;
-                }
-            }
-        }
-    }
-
-    if ($isAjaxRequest) {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($response);
-        exit;
-    }
-}
-
-function render_fragment($config) {
-    global $response;
-    ?>
-    <div class="card glass">
-        <div class="card-header"><h3>Добавить саппорта</h3></div>
-        <div class="card-body">
-            <div id="add-support-msg">
-                <?php if (!empty($response['message'])): ?>
-                    <div class="alert-msg alert-success" style="margin-bottom:0.75rem;">✅ <?= htmlspecialchars($response['message']) ?></div>
-                <?php elseif (!empty($response['error'])): ?>
-                    <div class="alert-msg alert-error" style="margin-bottom:0.75rem;">❌ <?= htmlspecialchars($response['error']) ?></div>
-                <?php endif; ?>
-            </div>
-            <form id="add-support-form" method="POST" style="display:flex; flex-direction:column; gap:0.75rem; max-width:520px;">
-                <label>Ник саппорта
-                    <input name="nick" class="form-input" placeholder="например: supportnick" required>
-                </label>
-                <label>ID (Discord)
-                    <input name="discord_id" class="form-input" placeholder="123456789012345678" required>
-                </label>
-                <label>Смена
-                    <select name="shift" class="form-select">
-                        <?php for ($i = 0; $i <= 12; $i++): ?>
-                            <option value="<?= $i ?>"><?= $i === 0 ? '0 (доп.смена)' : $i . ' смена' ?></option>
-                        <?php endfor; ?>
-                    </select>
-                </label>
-                <label>Когда начал (локальное время)
-                    <input type="datetime-local" name="start_at" class="form-input">
-                </label>
-
-                <div style="display:flex; gap:0.6rem;">
-                    <button type="submit" class="btn btn-primary">Добавить в таблицу</button>
-                    <a href="https://docs.google.com/spreadsheets/d/<?= htmlspecialchars($config['google_sheet_id'] ?? '') ?>/edit#gid=<?= htmlspecialchars($config['main_sheet_gid'] ?? '') ?>" class="btn" target="_blank">Открыть таблицу</a>
-                </div>
-            </form>
-            <div style="height:1rem"></div>
-        </div>
-    </div>
-
-    <script>
-    (function(){
-        const form = document.getElementById('add-support-form');
-        const msg = document.getElementById('add-support-msg');
-        form.addEventListener('submit', function(ev){
-            ev.preventDefault();
-            const data = new FormData(form);
-            data.append('ajax', '1');
-            fetch('add_support.php', {method:'POST', body: data})
-            .then(r => r.json())
-            .then(j => {
-                if (j.ok) {
-                    msg.innerHTML = '<div style="padding:0.6rem;border-radius:6px;background:rgba(16,185,129,0.08);color:#10B981">'+(j.message||'OK')+'</div>';
-                    form.reset();
-                } else {
-                    var errText = j.error || 'Ошибка';
-                    if (j.raw) errText += ' — ' + j.raw.substring(0,120);
-                    msg.innerHTML = '<div style="padding:0.6rem;border-radius:6px;background:rgba(239,68,68,0.06);color:#EF4444">'+errText+'</div>';
-                }
-            }).catch(err=>{
-                msg.innerHTML = '<div style="padding:0.6rem;border-radius:6px;background:rgba(239,68,68,0.06);color:#EF4444">'+String(err)+'</div>';
-            });
-        });
-    })();
-    </script>
-    <?php
-}
-
-if ($isAjaxFragment) {
-    render_fragment($config);
-    exit;
-}
-
+require_once 'db.php';
 require_once 'user_header.php';
+
+$current_role = $_SESSION['role'] ?? 'master';
+if (!in_array($current_role, ['admin', 'chief', 'curator'])) {
+    die("У вас нет прав для доступа к этой странице.");
+}
 ?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Добавить саппорта</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить саппорта | Futurama Staff</title>
     <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        .add-card {
+            max-width: 600px;
+            margin: 2rem auto;
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 2.5rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .form-group { margin-bottom: 1.5rem; position: relative; }
+        .form-group label { display: block; margin-bottom: 0.6rem; color: #94a3b8; font-size: 0.9rem; font-weight: 500; }
+
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .input-wrapper i { position: absolute; left: 1rem; color: #6366f1; font-size: 1.1rem; z-index: 2; }
+
+        .form-control {
+            width: 100%;
+            padding: 0.8rem 1rem 0.8rem 2.8rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+        .form-control:focus { border-color: #6366f1; outline: none; background: rgba(15, 23, 42, 0.8); }
+
+        /* CUSTOM SELECT STYLES */
+        .custom-select {
+            position: relative;
+            width: 100%;
+            user-select: none;
+        }
+        .select-trigger {
+            padding: 0.8rem 1rem 0.8rem 2.8rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.3s;
+        }
+        .select-trigger:hover { background: rgba(15, 23, 42, 0.8); border-color: rgba(99, 102, 241, 0.5); }
+        .select-trigger.open { border-color: #6366f1; border-radius: 12px 12px 0 0; }
+        
+        .select-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #1e293b;
+            border: 1px solid #6366f1;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            z-index: 100;
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+        .select-options.show { display: block; }
+        
+        .option-group {
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.05);
+            color: #6366f1;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .option-item {
+            padding: 10px 15px 10px 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #e2e8f0;
+        }
+        .option-item:hover { background: rgba(99, 102, 241, 0.2); color: #fff; }
+        .option-item.selected { background: #6366f1; color: #fff; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 1rem;
+            margin-top: 1rem;
+            background: linear-gradient(135deg, #6366f1 0%, #a78bfa 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-submit:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3); }
+
+        .alert { padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; display: none; }
+        .alert-success { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .alert-error { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    </style>
 </head>
 <body>
+    <div class="dashboard-container">
+        <?php include 'sidebar_v2.php'; ?>
+        <main class="main-content">
+            <div class="add-card">
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <h2 style="font-family: 'Outfit', sans-serif; font-size: 1.8rem; color: #fff;">Добавить саппорта</h2>
+                    <p style="color: #94a3b8;">Данные будут внесены в таблицу смен и переаттестации</p>
+                </div>
 
-<main class="main-content" style="max-width:900px;margin:2rem auto;">
-    <?php render_fragment($config); ?>
-</main>
+                <div id="statusMsg" class="alert"></div>
 
+                <form id="addSupportForm">
+                    <div class="form-group">
+                        <label>Дата вступления</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-calendar"></i>
+                            <input type="text" name="date" class="form-control" value="<?= date('d.m.Y') ?>">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Никнейм</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-user"></i>
+                            <input type="text" name="nickname" class="form-control" placeholder="Например: admin.original" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Discord ID</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-fingerprint"></i>
+                            <input type="text" name="discord_id" class="form-control" placeholder="Например: 1129175113967882331" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Номер смены</label>
+                        <div class="custom-select" id="shiftSelect">
+                            <i class="fas fa-clock" style="position: absolute; left: 1rem; top: 0.85rem; color: #6366f1; z-index: 5;"></i>
+                            <div class="select-trigger" id="selectTrigger">
+                                <span id="selectedLabel">Выберите смену из списка...</span>
+                                <i class="fas fa-chevron-down" style="position: static; font-size: 0.8rem; color: #94a3b8;"></i>
+                            </div>
+                            <div class="select-options" id="selectOptions">
+                                <div class="option-group">Основные смены</div>
+                                <div class="option-item" data-value="1">1 смена (00:00-02:00)</div>
+                                <div class="option-item" data-value="2">2 смена (02:00-04:00)</div>
+                                <div class="option-item" data-value="3">3 смена (04:00-06:00)</div>
+                                <div class="option-item" data-value="4">4 смена (06:00-08:00)</div>
+                                <div class="option-item" data-value="5">5 смена (08:00-10:00)</div>
+                                <div class="option-item" data-value="6">6 смена (10:00-12:00)</div>
+                                <div class="option-item" data-value="7">7 смена (12:00-14:00)</div>
+                                <div class="option-item" data-value="8">8 смена (14:00-16:00)</div>
+                                <div class="option-item" data-value="9">9 смена (16:00-18:00)</div>
+                                <div class="option-item" data-value="10">10 смена (18:00-20:00)</div>
+                                <div class="option-item" data-value="11">11 смена (20:00-22:00)</div>
+                                <div class="option-item" data-value="12">12 смена (22:00-00:00)</div>
+                                <div class="option-group">Дополнительно</div>
+                                <div class="option-item" data-value="0">0 смена (Замена)</div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="shift" id="shiftInput" required>
+                    </div>
+
+                    <button type="submit" class="btn-submit" id="submitBtn">
+                        <i class="fas fa-save"></i>
+                        <span>Внести в таблицу</span>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Custom Select Logic
+        const trigger = document.getElementById('selectTrigger');
+        const options = document.getElementById('selectOptions');
+        const label = document.getElementById('selectedLabel');
+        const hiddenInput = document.getElementById('shiftInput');
+
+        trigger.addEventListener('click', () => {
+            options.classList.toggle('show');
+            trigger.classList.toggle('open');
+        });
+
+        document.querySelectorAll('.option-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const val = this.getAttribute('data-value');
+                const txt = this.innerText;
+                
+                label.innerText = txt;
+                hiddenInput.value = val;
+                
+                document.querySelectorAll('.option-item').forEach(i => i.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                options.classList.remove('show');
+                trigger.classList.remove('open');
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('shiftSelect').contains(e.target)) {
+                options.classList.remove('show');
+                trigger.classList.remove('open');
+            }
+        });
+
+        // Form Submit Logic
+        document.getElementById('addSupportForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if(!hiddenInput.value) { alert('Пожалуйста, выберите смену!'); return; }
+            
+            const btn = document.getElementById('submitBtn');
+            const status = document.getElementById('statusMsg');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Отправка...</span>';
+            
+            try {
+                const response = await fetch('api.php?action=add_support', {
+                    method: 'POST',
+                    body: new FormData(this)
+                });
+                const res = await response.json();
+                status.style.display = 'block';
+                if(res.success) {
+                    status.className = 'alert alert-success';
+                    status.innerHTML = 'Успешно внесено в таблицу!';
+                    this.reset();
+                    label.innerText = 'Выберите смену из списка...';
+                    hiddenInput.value = '';
+                } else {
+                    status.className = 'alert alert-error';
+                    status.innerHTML = 'Ошибка: ' + res.error;
+                }
+            } catch (err) {
+                status.style.display = 'block';
+                status.className = 'alert alert-error';
+                status.innerHTML = 'Ошибка сети';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> <span>Внести в таблицу</span>';
+            }
+        });
+    </script>
 </body>
 </html>

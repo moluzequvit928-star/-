@@ -1,0 +1,20 @@
+<?php
+/**
+ * ПРИМЕР локального конфига проекта.
+ * Переименуйте этот файл в app_config.php и заполните своими данными.
+ * ЭТОТ ФАЙЛ БЕЗОПАСЕН ДЛЯ ГИТХАБА.
+ */
+return [
+    'google_sheet_id' => 'ВАШ_ID_ТАБЛИЦЫ_ИЗ_URL',
+    'main_sheet_gid' => 'GID_ГЛАВНОГО_ЛИСТА',
+    'reattestation_gid' => 'GID_ЛИСТА_ПЕРЕАТТЕСТАЦИИ',
+
+    // URL Web App из Google Apps Script (после деплоя).
+    'app_script_webhook_url' => 'https://script.google.com/macros/s/.../exec',
+
+    // Секретный токен для проверки подлинности запросов.
+    'app_script_webhook_token' => 'ВАШ_СЕКРЕТНЫЙ_ТОКЕН',
+
+    // Токен Discord Бота (для получения аватарок и т.д.)
+    'bot_api_token' => 'ВАШ_ТОКЕН_БОТА'
+];

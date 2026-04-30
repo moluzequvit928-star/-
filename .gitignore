@@ -1,22 +1,28 @@
-# Библиотеки Node.js (их хостинг установит сам)
-node_modules/
+# Системные файлы
+.DS_Store
+Thumbs.db
 
-# Папка с загруженными скриншотами (не нужно хранить в коде)
-uploads/
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.webp
-!favicon_futurama_staff_1776084855108.png
-
-# Временные файлы PHP и логи
-*.log
-add_ban_col.php
-force_dump.php
-debug_*.php
-init_stats_db.php
-repair_history.php
-
-# Локальные базы данных (если есть)
+# Конфигурации и секреты (ВАЖНО!)
+app_config.php
+bot_config.json
+.env
 users.json
+db.php
+
+# Папки зависимостей
+node_modules/
+vendor/
+
+# Кэш и логи
+cache/
+*.log
+npm-debug.log*
+
+# Временные папки IDE
+.idea/
+.vscode/
+.gemini/
+
+# База данных (если используется локальный файл)
+*.db
+*.sqlite

@@ -6,94 +6,87 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
     exit;
 }
 
-// Только администратор может управлять пользователями
-if (($_SESSION['role'] ?? 'master') !== 'admin') {
+// Доступ к странице только для Админов, Гл. Кураторов и Кураторов
+$current_role = $_SESSION['role'] ?? 'master';
+if (!in_array($current_role, ['admin', 'chief', 'curator'])) {
     header('Location: index.php');
     exit;
 }
 
 require_once 'db.php';
-
-// ПРОВЕРКА БД: Добавляем колонку бана, если её нет
-try {
-    $pdo->query("SELECT is_banned FROM users LIMIT 1");
-} catch (Exception $e) {
-    $pdo->exec("ALTER TABLE users ADD COLUMN is_banned TINYINT(1) DEFAULT 0");
-}
-
 require_once 'user_header.php';
 
 $message = '';
 $messageType = '';
 
-// Обработка действий
+// Обработка POST запросов
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    // Добавить нового пользователя
-    if ($action === 'add') {
-        $new_login    = trim($_POST['new_login'] ?? '');
-        $new_password = trim($_POST['new_password'] ?? '');
-        $new_discord  = trim($_POST['new_discord'] ?? '');
-        $new_role     = $_POST['new_role'] ?? 'master';
+    // Только АДМИН может добавлять, удалять или банить
+    if ($current_role !== 'admin') {
+        $message = 'Ошибка: У вас недостаточно прав для этого действия!';
+        $messageType = 'error';
+    } else {
+        // ДОБАВЛЕНИЕ
+        if ($action === 'add') {
+            $new_login    = trim($_POST['new_login'] ?? '');
+            $new_password = trim($_POST['new_password'] ?? '');
+            $new_discord  = trim($_POST['new_discord'] ?? '');
+            $new_role     = $_POST['new_role'] ?? 'master';
 
-        if (!$new_login || !$new_password) {
-            $message = 'Логин и пароль обязательны!';
-            $messageType = 'error';
-        } else {
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
-            $stmt->execute([$new_login]);
-            if ($stmt->fetch()) {
-                $message = 'Пользователь с таким логином уже существует!';
+            if (!$new_login || !$new_password) {
+                $message = 'Логин и пароль обязательны!';
                 $messageType = 'error';
             } else {
-                $stmt = $pdo->prepare("INSERT INTO users (username, password, discord_id, role) VALUES (?, ?, ?, ?)");
-                $stmt->execute([
-                    $new_login,
-                    $new_password,
-                    $new_discord ?: 'system',
-                    in_array($new_role, ['admin', 'curator', 'master']) ? $new_role : 'master'
-                ]);
-                $message = "Пользователь «{$new_login}» добавлен!";
+                $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+                $stmt->execute([$new_login]);
+                if ($stmt->fetch()) {
+                    $message = 'Пользователь с таким логином уже существует!';
+                    $messageType = 'error';
+                } else {
+                    $stmt = $pdo->prepare("INSERT INTO users (username, password, discord_id, role) VALUES (?, ?, ?, ?)");
+                    $stmt->execute([$new_login, $new_password, $new_discord ?: 'system', $new_role]);
+                    $message = "Пользователь «{$new_login}» успешно добавлен!";
+                    $messageType = 'success';
+                }
+            }
+        }
+
+        // УДАЛЕНИЕ
+        if ($action === 'delete') {
+            $del_login = trim($_POST['del_login'] ?? '');
+            if ($del_login === 'admin' || $del_login === $_SESSION['username']) {
+                $message = 'Нельзя удалить этого пользователя!';
+                $messageType = 'error';
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM users WHERE username = ?");
+                $stmt->execute([$del_login]);
+                $message = "Пользователь «{$del_login}» удалён из системы.";
+                $messageType = 'success';
+            }
+        }
+
+        // БАН / РАЗБАН
+        if ($action === 'toggle_ban') {
+            $ban_login = trim($_POST['ban_login'] ?? '');
+            if ($ban_login !== 'admin' && $ban_login !== $_SESSION['username']) {
+                $stmt = $pdo->prepare("UPDATE users SET is_banned = 1 - is_banned WHERE username = ?");
+                $stmt->execute([$ban_login]);
+                $message = "Статус доступа для «{$ban_login}» изменен.";
                 $messageType = 'success';
             }
         }
     }
-
-    // Удалить пользователя
-    if ($action === 'delete') {
-        $del_login = trim($_POST['del_login'] ?? '');
-        if ($del_login === 'admin') {
-            $message = 'Нельзя удалить главного администратора!';
-            $messageType = 'error';
-        } elseif ($del_login === $_SESSION['username']) {
-            $message = 'Нельзя удалить самого себя!';
-            $messageType = 'error';
-        } else {
-            $stmt = $pdo->prepare("DELETE FROM users WHERE username = ?");
-            $stmt->execute([$del_login]);
-            $message = "Пользователь «{$del_login}» удалён!";
-            $messageType = 'success';
-        }
-    }
-
-    // Забанить/Разбанить
-    if ($action === 'toggle_ban') {
-        $ban_login = trim($_POST['ban_login'] ?? '');
-        if ($ban_login === 'admin' || $ban_login === $_SESSION['username']) {
-            $message = 'Нельзя забанить администратора или самого себя!';
-            $messageType = 'error';
-        } else {
-            $stmt = $pdo->prepare("UPDATE users SET is_banned = 1 - is_banned WHERE username = ?");
-            $stmt->execute([$ban_login]);
-            $message = "Статус блокировки для «{$ban_login}» изменен!";
-            $messageType = 'success';
-        }
-    }
 }
 
-// Загрузка пользователей
-$stmt = $pdo->query("SELECT * FROM users ORDER BY username ASC");
+// АВТО-ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ (last_seen)
+try {
+    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen DATETIME DEFAULT NULL");
+} catch (Exception $e) {}
+
+// Загрузка списка пользователей (СКРЫВАЕМ admin И ТЕХ КТО НЕ ЗАХОДИЛ)
+$stmt = $pdo->query("SELECT * FROM users WHERE username != 'admin' AND last_seen IS NOT NULL ORDER BY role ASC, username ASC");
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
@@ -101,118 +94,186 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управление кадрами | Панель</title>
+    <title>Управление персоналом | Futurama Staff</title>
     <link rel="stylesheet" href="index.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .users-table { width: 100%; border-collapse: collapse; color: var(--text-main); }
-        .users-table th, .users-table td { text-align: left; padding: 0.9rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
-        .users-table th { font-weight: 600; color: #A78BFA; border-bottom: 1px solid rgba(99, 102, 241, 0.3); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .users-table tr.banned-row td { background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.1); }
-        .banned-text { text-decoration: line-through; color: #EF4444 !important; opacity: 0.7; }
+        .users-table { width: 100%; border-collapse: separate; border-spacing: 0 10px; margin-top: 1rem; }
+        .users-table th { padding: 1rem; color: #94a3b8; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; text-align: left; }
+        .users-table td { padding: 1.2rem 1rem; background: rgba(255, 255, 255, 0.02); border-top: 1px solid rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        .users-table td:first-child { border-left: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px 0 0 16px; }
+        .users-table td:last-child { border-right: 1px solid rgba(255, 255, 255, 0.05); border-radius: 0 16px 16px 0; }
         
-        .role-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.65rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
-        .role-admin { background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .role-curator { background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
-        .role-master { background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3); }
-        
-        .form-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
-        .form-field { display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 140px; }
-        .form-field label { font-size: 0.82rem; color: var(--text-muted); font-weight: 500; }
-        .form-input { padding: 0.7rem 0.9rem; border-radius: 8px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: white; outline: none; font-size: 0.9rem; transition: border-color 0.2s; font-family: 'Inter', sans-serif; }
-        .form-input:focus { border-color: #6366F1; }
-        .form-select { padding: 0.7rem 0.9rem; border-radius: 8px; background: #0F172A; border: 1px solid var(--border-color); color: white; outline: none; font-size: 0.9rem; cursor: pointer; }
-        
-        .btn-add { background: linear-gradient(135deg, #6366F1, #8B5CF6); color: white; border: none; padding: 0.7rem 1.4rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.1s; }
-        .btn-add:hover { transform: translateY(-1px); }
-        .btn-delete { background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.35rem 0.8rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer; }
-        .btn-ban { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 0.35rem 0.8rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer; }
-        .btn-unban { background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); padding: 0.35rem 0.8rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer; }
-        
-        .alert-msg { padding: 0.85rem 1.2rem; border-radius: 10px; font-weight: 500; font-size: 0.9rem; margin-bottom: 0.5rem; }
-        .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10B981; }
-        .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #EF4444; }
+        .user-row:hover td { background: rgba(255, 255, 255, 0.04); }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9998; backdrop-filter: blur(4px); justify-content: center; align-items: center; }
-        .modal-overlay.active { display: flex; }
-        .modal-box { background: #0F172A; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 16px; padding: 2rem; width: 350px; }
+        .role-badge {
+            padding: 4px 12px;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .role-admin { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.2); }
+        .role-chief { background: rgba(139, 92, 246, 0.1); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.2); }
+        .role-curator { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .role-master { background: rgba(99, 102, 241, 0.1); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.2); }
+
+        .btn-action {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+            color: #94a3b8;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-action:hover { background: #fff; color: #000; }
+        .btn-action.danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .alert-box {
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+        .alert-success { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .alert-error { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
-        <?php require_once 'sidebar_v2.php'; ?>
-
+        <?php include 'sidebar_v2.php'; ?>
+        
         <main class="main-content">
-            <header class="header glass">
-                <h1>👥 Кадры</h1>
+            <header class="header glass" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <h1 style="font-family: 'Outfit', sans-serif; font-size: 2rem; color: #fff;">Управление кадрами</h1>
+                    <?php if ($current_role === 'admin'): ?>
+                        <button class="btn-edit-profile" style="background: var(--accent); border: none;" onclick="openAddModal()">
+                            <i class="fas fa-plus"></i> Добавить сотрудника
+                        </button>
+                    <?php endif; ?>
+                </div>
                 <div class="user-profile">
-                    <img src="<?= htmlspecialchars($avatar_url) ?>" style="width: 32px; height: 32px; border-radius: 50%;">
-                    <span style="font-weight: 500; color: #A78BFA; margin-left:8px;"><?= htmlspecialchars($_SESSION['username']) ?></span>
+                    <a href="logout.php" class="btn-logout-premium"><i class="fas fa-sign-out-alt"></i> Выйти</a>
                 </div>
             </header>
 
             <section class="content">
                 <?php if ($message): ?>
-                    <div class="alert-msg <?= $messageType === 'success' ? 'alert-success' : 'alert-error' ?>" style="grid-column: 1 / -1;">
-                        <?= $messageType === 'success' ? '✅' : '❌' ?> <?= htmlspecialchars($message) ?>
+                    <div class="alert-box <?= $messageType === 'success' ? 'alert-success' : 'alert-error' ?>">
+                        <i class="fas <?= $messageType === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle' ?>"></i>
+                        <?= htmlspecialchars($message) ?>
                     </div>
                 <?php endif; ?>
 
-                <div class="card glass" style="grid-column: 1 / -1;">
-                    <div class="card-header"><h3>👥 Список пользователей</h3></div>
-                    <div class="card-body" style="overflow-x: auto;">
+                <div class="card">
+                    <div style="overflow-x: auto;">
                         <table class="users-table">
                             <thead>
-                                <tr><th>Логин</th><th>Роль</th><th>Discord ID</th><th>Был в сети</th><th>Действия</th></tr>
+                                <tr>
+                                    <th>Сотрудник</th>
+                                    <th>Должность</th>
+                                    <th>Discord ID</th>
+                                    <th>Последний вход</th>
+                                    <th style="text-align: right;">Действия</th>
+                                </tr>
                             </thead>
                             <tbody>
+                                <?php if (empty($users)): ?>
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; padding: 3rem; color: #64748b;">
+                                            Здесь пока пусто. В списке появятся только те, кто хотя бы раз зашел на сайт.
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
                                 <?php foreach ($users as $u): ?>
-                                <tr class="<?= $u['is_banned'] ? 'banned-row' : '' ?>">
-                                    <td class="<?= $u['is_banned'] ? 'banned-text' : '' ?> font-weight: 600; color: #E2E8F0;">
-                                        <?= htmlspecialchars($u['username']) ?>
+                                <tr class="user-row">
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <div style="width: 36px; height: 36px; border-radius: 12px; background: rgba(99, 102, 241, 0.1); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; border: 1px solid rgba(99, 102, 241, 0.2);">
+                                                <?= strtoupper(substr($u['username'], 0, 1)) ?>
+                                            </div>
+                                            <div>
+                                                <div style="font-weight: 700; color: #fff;"><?= htmlspecialchars($u['username']) ?></div>
+                                                <?php if (isset($u['is_banned']) && $u['is_banned']): ?>
+                                                    <span style="font-size: 0.7rem; color: #ef4444; font-weight: 700;">ЗАБЛОКИРОВАН</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
                                         <?php 
-                                            $uRole = $u['role'] ?? 'master';
+                                            $r = $u['role'] ?? 'master';
                                             $lbl = 'Мастер';
-                                            if ($uRole === 'admin') $lbl = 'Админ';
-                                            elseif ($uRole === 'chief') $lbl = 'Гл. Куратор';
-                                            elseif ($uRole === 'curator') $lbl = 'Куратор';
+                                            if ($r === 'admin') $lbl = 'Админ';
+                                            elseif ($r === 'chief') $lbl = 'Гл. Куратор';
+                                            elseif ($r === 'curator') $lbl = 'Куратор';
                                         ?>
-                                        <span class="role-badge <?= $uRole === 'admin' ? 'role-admin' : ($uRole === 'master' ? 'role-master' : 'role-curator') ?>">
+                                        <span class="role-badge role-<?= $r ?>">
+                                            <i class="fas <?= $r === 'admin' ? 'fa-crown' : 'fa-user' ?>"></i>
                                             <?= $lbl ?>
                                         </span>
                                     </td>
-                                    <td style="color: #64748B; font-family: monospace;"><?= htmlspecialchars($u['discord_id'] ?? '—') ?></td>
-                                    <td style="color: #94A3B8; font-size: 0.9rem;">
-                                        <?php if ($u['is_banned']): ?>
-                                            <span style="color: #EF4444; font-size: 0.8rem; font-weight: 600;">🚫 ЗАБАНЕН</span>
-                                        <?php else: ?>
-                                            <?php 
-                                                if (!empty($u['last_seen'])) {
-                                                    $ls = strtotime($u['last_seen']);
-                                                    $diff = time() - $ls;
-                                                    if ($diff < 60) echo '<span style="color: #10B981; font-weight: 600;">В сети</span>';
-                                                    elseif ($diff < 3600) echo floor($diff/60) . ' мин. назад';
-                                                    elseif ($diff < 86400) echo floor($diff/3600) . ' ч. назад';
-                                                    else echo date('d.m.Y', $ls);
-                                                } else {
-                                                    echo '-';
-                                                }
-                                            ?>
-                                        <?php endif; ?>
-                                    </td>
+                                    <td><code style="color: #94a3b8; font-size: 0.8rem;"><?= htmlspecialchars($u['discord_id'] ?? '—') ?></code></td>
                                     <td>
-                                        <div style="display: flex; gap: 0.5rem;">
-                                        <?php if ($u['username'] !== 'admin' && $u['username'] !== $_SESSION['username']): ?>
-                                            <form method="POST" style="display:inline;">
-                                                <input type="hidden" name="action" value="toggle_ban">
-                                                <input type="hidden" name="ban_login" value="<?= htmlspecialchars($u['username']) ?>">
-                                                <button type="submit" class="<?= $u['is_banned'] ? 'btn-unban' : 'btn-ban' ?>">
-                                                    <?= $u['is_banned'] ? '🔓 Разбанить' : '🚫 Забанить' ?>
+                                        <span style="color: #64748b; font-size: 0.85rem;">
+                                            <?= !empty($u['last_seen']) ? date('d.m.Y H:i', strtotime($u['last_seen'])) : '—' ?>
+                                        </span>
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <?php 
+                                        $canManage = ($current_role === 'admin');
+                                        $isProtected = ($u['username'] === 'admin' || $u['username'] === $_SESSION['username']);
+                                        
+                                        if ($canManage && !$isProtected): 
+                                            $isBanned = isset($u['is_banned']) && $u['is_banned'];
+                                        ?>
+                                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                                <form method="POST" style="margin: 0;">
+                                                    <input type="hidden" name="action" value="toggle_ban">
+                                                    <input type="hidden" name="ban_login" value="<?= htmlspecialchars($u['username']) ?>">
+                                                    <button type="submit" class="btn-action" title="<?= $isBanned ? 'Разблокировать' : 'Заблокировать' ?>">
+                                                        <i class="fas <?= $isBanned ? 'fa-unlock' : 'fa-ban' ?>"></i>
+                                                    </button>
+                                                </form>
+                                                <button class="btn-action danger" onclick="confirmDelete('<?= htmlspecialchars($u['username']) ?>')" title="Удалить">
+                                                    <i class="fas fa-trash-alt"></i>
                                                 </button>
-                                            </form>
-                                            <button class="btn-delete" onclick="openDeleteModal('<?= htmlspecialchars($u['username']) ?>')">🗑 Удалить</button>
+                                            </div>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -225,25 +286,64 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </main>
     </div>
 
-    <div class="modal-overlay" id="delete-modal">
-        <div class="modal-box">
-            <h3>🗑 Удалить пользователя?</h3>
-            <p id="del-name-display" style="color: #EF4444; margin: 1rem 0; font-weight: 600;"></p>
+    <!-- Modal: Удаление -->
+    <div class="modal" id="modalDelete">
+        <div class="modal-content" style="text-align: center;">
+            <div style="width: 60px; height: 60px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1.5rem;">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <h3 style="color: #fff; margin-bottom: 1rem;">Удалить аккаунт?</h3>
+            <p style="color: #94a3b8; margin-bottom: 2rem;">Вы уверены, что хотите удалить <b id="delName" style="color: #fff;"></b>? Это действие нельзя отменить.</p>
             <form method="POST">
-                <input type="hidden" name="action" value="delete"><input type="hidden" name="del_login" id="del-login-input">
-                <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
-                    <button type="button" class="btn-add" style="background: grey;" onclick="document.getElementById('delete-modal').classList.remove('active')">Отмена</button>
-                    <button type="submit" class="btn-delete">Да, удалить</button>
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="del_login" id="delLoginInput">
+                <div style="display: flex; gap: 12px;">
+                    <button type="button" class="btn-edit-profile" style="flex: 1; justify-content: center;" onclick="closeModals()">Отмена</button>
+                    <button type="submit" class="btn-action danger" style="flex: 1; height: 45px; font-weight: 700;">Да, удалить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Добавление -->
+    <div class="modal" id="modalAdd">
+        <div class="modal-content">
+            <h3 style="color: #fff; margin-bottom: 1.5rem;">Новый сотрудник</h3>
+            <form method="POST">
+                <input type="hidden" name="action" value="add">
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <input type="text" name="new_login" class="form-control" placeholder="Логин" required style="padding-left: 1rem;">
+                    <input type="password" name="new_password" class="form-control" placeholder="Пароль" required style="padding-left: 1rem;">
+                    <input type="text" name="new_discord" class="form-control" placeholder="Discord ID" style="padding-left: 1rem;">
+                    <select name="new_role" class="form-control" style="padding-left: 1rem;">
+                        <option value="master">Мастер</option>
+                        <option value="curator">Куратор</option>
+                        <option value="chief">Главный Куратор</option>
+                        <option value="admin">Администратор</option>
+                    </select>
+                    <div style="display: flex; gap: 12px; margin-top: 1rem;">
+                        <button type="button" class="btn-edit-profile" style="flex: 1; justify-content: center;" onclick="closeModals()">Отмена</button>
+                        <button type="submit" class="btn-edit-profile" style="flex: 2; justify-content: center; background: var(--accent); border: none;">Создать</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        function openDeleteModal(login) {
-            document.getElementById('del-login-input').value = login;
-            document.getElementById('del-name-display').textContent = login;
-            document.getElementById('delete-modal').classList.add('active');
+        function confirmDelete(login) {
+            document.getElementById('delName').textContent = login;
+            document.getElementById('delLoginInput').value = login;
+            document.getElementById('modalDelete').classList.add('active');
+        }
+        function openAddModal() {
+            document.getElementById('modalAdd').classList.add('active');
+        }
+        function closeModals() {
+            document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+        }
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) closeModals();
         }
     </script>
 </body>

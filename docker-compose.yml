@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      - MYSQLHOST=db
+      - MYSQLPORT=3306
+      - MYSQLUSER=root
+      - MYSQLPASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQLDATABASE=${MYSQL_DATABASE}
+      - PORT=80
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  db_data:

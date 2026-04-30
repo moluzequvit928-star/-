@@ -42,8 +42,8 @@ try {
     // Если что-то не так
 }
 
-// Теперь делаем запрос
-if ($role === 'admin' || $role === 'chief' || $role === 'senior_curator') {
+// Теперь делаем запрос: Только АДМИН видит всё. Остальные (включая Гл. Куратора) - только своё.
+if ($role === 'admin') {
     $stmt = $pdo->prepare("SELECT * FROM reattestations ORDER BY created_at DESC");
     $stmt->execute();
 } else {
@@ -60,6 +60,7 @@ $archive = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <title>Архив переаттестаций</title>
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .archive-card {
             background: rgba(30, 41, 59, 0.4);
@@ -178,8 +179,9 @@ $archive = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <header class="header glass">
                 <h1>Архив переаттестаций</h1>
                 <div class="user-profile">
-                    <span class="user-name"><?= htmlspecialchars($curator) ?></span>
-                    <span class="user-role" style="background: rgba(167, 139, 250, 0.15); color: #A78BFA; padding: 0.35rem 0.8rem; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;"><?= htmlspecialchars($role) ?></span>
+                    <a href="logout.php" class="btn-logout-premium">
+                        <i class="fas fa-sign-out-alt"></i> Выйти
+                    </a>
                 </div>
             </header>
 

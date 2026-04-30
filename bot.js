@@ -3,9 +3,16 @@ const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
 
-// Берем токен из переменных хостинга, чтобы Дискорд его не банил на GitHub
-const TOKEN = process.env.DISCORD_TOKEN || 'СЮДА_ВСТАВИТЬ_ДЛЯ_ЛОКАЛЬНОГО_ТЕСТА';
-const CLIENT_ID = process.env.DISCORD_CLIENT_ID || '1489782412924813445';
+// Загружаем конфиг бота (Файл bot_config.json не должен попасть на GitHub!)
+let config = {};
+try {
+    config = require('./bot_config.json');
+} catch (e) {
+    console.warn("⚠️ Файл bot_config.json не найден. Бот будет использовать переменные окружения.");
+}
+
+const TOKEN = process.env.DISCORD_TOKEN || config.token;
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID || config.client_id;
 
 
 const client = new Client({
@@ -13,6 +20,30 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages
     ]
+});
+
+// Добавляем мини-сервер для выдачи аватарок сайту
+const http = require('http');
+const AVATAR_PORT = 3000;
+
+http.createServer(async (req, res) => {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    if (url.pathname === '/avatar') {
+        const id = url.searchParams.get('id');
+        if (!id) return res.end('No ID');
+        try {
+            const user = await client.users.fetch(id);
+            const avatarUrl = user.displayAvatarURL({ extension: 'png', size: 128 });
+            res.writeHead(302, { 'Location': avatarUrl });
+            return res.end();
+        } catch (e) {
+            res.writeHead(404);
+            return res.end('Not found');
+        }
+    }
+    res.end('Bot API');
+}).listen(AVATAR_PORT, () => {
+    console.log(`🤖 Сервер аватарок запущен на порту ${AVATAR_PORT}`);
 });
 
 const usersFile = path.join(__dirname, 'users.json');
@@ -77,8 +108,28 @@ const commands = [
     {
         name: 'get_access',
         description: 'Получить логин и пароль для панели Futurama',
+    },
+    {
+        name: 'profile',
+        description: 'Посмотреть свой профиль и статистику',
     }
 ];
+
+const { EmbedBuilder } = require('discord.js');
+
+const API_BASE_URL = process.env.API_BASE_URL || config.api_base_url || 'http://localhost';
+const BOT_API_TOKEN = process.env.BOT_API_TOKEN || config.api_token || 'secret';
+
+async function fetchUserProfile(discordId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api.php?action=bot_profile&discord_id=${discordId}&token=${BOT_API_TOKEN}`);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (e) {
+        console.error('API Fetch error:', e);
+        return null;
+    }
+}
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
@@ -157,7 +208,7 @@ client.on('interactionCreate', async interaction => {
                 saveUsers(users);
 
                 return await interaction.editReply({
-                    content: `🔄 Доступ обновлен!\n**Логин:** \`${existingLogin}\`\n**Новый пароль:** \`${newPassword}\`\n**Роль в панели:** \`${panelRole}\`\nСсылка на панель: <https://cooperative-joy-production-fa8a.up.railway.app>`
+                    content: `🔄 Доступ обновлен!\n**Логин:** \`${existingLogin}\`\n**Новый пароль:** \`${newPassword}\`\n**Роль в панели:** \`${panelRole}\`\nСсылка на панель: <${API_BASE_URL}>`
                 });
             }
 
@@ -174,11 +225,67 @@ client.on('interactionCreate', async interaction => {
             saveUsers(users);
 
             await interaction.editReply({
-                content: `✅ Доступ создан!\n\n**Логин:** \`${login}\`\n**Пароль:** \`${password}\`\n**Роль:** \`${panelRole}\`\nСсылка: <https://cooperative-joy-production-fa8a.up.railway.app>`
+                content: `✅ Доступ создан!\n\n**Логин:** \`${login}\`\n**Пароль:** \`${password}\`\n**Роль:** \`${panelRole}\`\nСсылка: <${API_BASE_URL}>`
             });
         } catch (error) {
             console.error('Ошибка /get_access:', error);
             await interaction.editReply({ content: 'Произошла ошибка.' }).catch(() => { });
+        }
+    }
+
+    if (interaction.commandName === 'profile') {
+        try {
+            await interaction.deferReply();
+            const data = await fetchUserProfile(interaction.user.id);
+
+            if (!data || !data.success) {
+                return await interaction.editReply({
+                    content: '❌ **Профиль не найден!**\nСначала получите доступ к панели командой `/get_access`.'
+                });
+            }
+
+            const roleColors = {
+                'admin': 0xFF5555,
+                'curator': 0x55FF55,
+                'master': 0x5555FF
+            };
+
+            const roleNames = {
+                'admin': 'Администратор',
+                'curator': 'Куратор',
+                'master': 'Мастер'
+            };
+
+            const stats = data.stats || { total: 0, approved: 0, rejected: 0, pending: 0 };
+            const weeklyCount = data.weekly_approved || 0;
+            const quotaStatus = weeklyCount >= 10 ? '✅ Выполнена' : `⏳ В процессе (${weeklyCount}/10)`;
+
+            const embed = new EmbedBuilder()
+                .setTitle(`👤 Профиль: ${data.username}`)
+                .setColor(roleColors[data.role] || 0xAAAAAA)
+                .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+                .addFields(
+                    { name: '🔖 Роль', value: `\`${roleNames[data.role] || data.role}\``, inline: true },
+                    { name: '🆔 Discord ID', value: `\`${interaction.user.id}\``, inline: true },
+                    { name: '\u200B', value: '\u200B', inline: false },
+                    { name: '📊 Статистика отчетов', value: [
+                        `✅ Одобрено: **${stats.approved || 0}**`,
+                        `⏳ Ожидают: **${stats.pending || 0}**`,
+                        `❌ Отклонено: **${stats.rejected || 0}**`,
+                        `📈 Всего: **${stats.total || 0}**`
+                    ].join('\n'), inline: true },
+                    { name: '📅 Норма за неделю', value: [
+                        `Отработано: **${weeklyCount}**`,
+                        `Статус: **${quotaStatus}**`
+                    ].join('\n'), inline: true }
+                )
+                .setFooter({ text: 'Futurama Staff System', iconURL: client.user.displayAvatarURL() })
+                .setTimestamp();
+
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error('Ошибка /profile:', error);
+            await interaction.editReply({ content: 'Произошла ошибка при загрузке профиля.' }).catch(() => { });
         }
     }
 });

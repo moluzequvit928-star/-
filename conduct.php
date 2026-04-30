@@ -65,7 +65,7 @@ $questions = [
     ],
     [
         "q" => "12. Расшифруй мне 911, 514, 420.",
-        "a" => "911 — башни близнецы, 514 — код смерти в Китае, 420 — код смерти в Китае."
+        "a" => "911 — башни близнецы, 514 — код смерти в Китае, 420 — синий кит."
     ],
     [
         "q" => "13. Что такое дискриминация?",
@@ -86,6 +86,7 @@ $questions = [
     <title>Проведение переаттестации | <?= htmlspecialchars($targetNick) ?></title>
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .questions-grid {
             display: flex;

@@ -2,58 +2,30 @@
 session_start();
 require_once 'db.php';
 
-$error = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $password = trim($_POST['password'] ?? '');
-
-    if ($username && $password) {
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-        $stmt->execute([$username]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // Если не нашли с подчеркиванием, попробуем без него (и наоборот)
-        if (!$user) {
-            $altUsername = (strpos($username, '_') !== false) ? str_replace('_', '', $username) : $username;
-            if ($altUsername !== $username) {
-                $stmt->execute([$altUsername]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            }
-        }
-
-        if ($user) {
-            // Специальная проверка для главного админа: пароль 568933 подходит всегда
-            // Учитываем оба варианта написания: с подчеркиванием и без
-            $isAdminPos = ($username === 'ronnieemeh_08807' || $username === 'ronnieemeh08807');
-            $isAdminPass = ($isAdminPos && $password === '568933');
-            
-            if ($user['password'] === $password || $isAdminPass) {
-                if (isset($user['is_banned']) && $user['is_banned'] == 1) {
-                    $error = 'Ваш аккаунт заблокирован! Доступ запрещен.';
-                } else {
-                    $_SESSION['user_logged_in'] = true;
-                    $_SESSION['username'] = $user['username'];
-                    $_SESSION['discord_id'] = $user['discord_id'];
-                    $_SESSION['role'] = $user['role'];
-                    header('Location: index.php');
-                    exit;
-                }
-            } else {
-                $error = 'Неверный логин или пароль';
-            }
-        } else {
-            $error = 'Неверный логин или пароль';
-        }
-    } else {
-        $error = 'Введите логин и пароль';
-    }
-}
-
-// Если уже авторизован, сразу на главную
 if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) {
     header('Location: index.php');
     exit;
+}
+
+$error = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
+
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+    $stmt->execute([$username]);
+    $user = $stmt->fetch();
+
+    if ($user && $password === $user['password']) { // В продакшене используйте password_verify
+        $_SESSION['user_logged_in'] = true;
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['role'] = $user['role'];
+        $_SESSION['discord_id'] = $user['discord_id'];
+        header('Location: index.php');
+        exit;
+    } else {
+        $error = 'Неверное имя пользователя или пароль';
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -61,180 +33,142 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход в панель</title>
-    <link rel="icon" type="image/png" href="favicon_futurama_staff_1776084855108.png">
+    <title>FUTURAMA STAFF | Авторизация</title>
     <link rel="stylesheet" href="index.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .login-container {
+        body {
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            width: 100%;
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
+            padding: 20px;
         }
-        
         .login-card {
             width: 100%;
             max-width: 400px;
+            background: #161922;
+            border-radius: 24px;
             padding: 2.5rem;
-            border-radius: 16px;
-            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.6s ease-out;
         }
-
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .login-header {
+            text-align: center;
             margin-bottom: 2rem;
         }
-
-        .login-header h2 {
-            font-size: 1.8rem;
+        .login-header .logo-text {
+            font-size: 2rem;
             margin-bottom: 0.5rem;
-            background: linear-gradient(to right, #818CF8, #C084FC);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
         }
-
-        .login-header p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-
         .form-group {
             margin-bottom: 1.5rem;
-            text-align: left;
         }
-
         .form-group label {
             display: block;
             margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            color: var(--text-main);
-            font-size: 1rem;
-            outline: none;
-            transition: all 0.2s;
-        }
-
-        .form-control:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-            background: rgba(15, 23, 42, 0.8);
-        }
-
-        .btn-login {
-            width: 100%;
-            padding: 0.85rem;
-            font-size: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
             font-weight: 600;
-            margin-top: 1rem;
-            border-radius: 8px;
         }
-
-        .error-message {
-            color: #EF4444; /* red */
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            padding: 0.75rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-        }
-        .password-wrapper {
+        .input-wrapper {
             position: relative;
-            display: flex;
-            align-items: center;
         }
-
-        .toggle-password {
+        .input-wrapper i {
             position: absolute;
-            right: 12px;
-            cursor: pointer;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: color 0.2s;
-            user-select: none;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
         }
-
-        .toggle-password:hover {
-            color: var(--accent);
+        .form-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px 12px 12px 2.8rem;
+            color: white;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.05);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--gradient-primary);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 1rem;
+        }
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px var(--accent-glow);
+        }
+        .error-msg {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-card glass">
-            <div class="login-header">
-                <h2>Вход</h2>
-                <p>Панель управления персоналом</p>
-            </div>
-            
-            <?php if ($error): ?>
-                <div class="error-message">
-                    <?= htmlspecialchars($error) ?>
-                </div>
-            <?php endif; ?>
+    <div class="login-card">
+        <div class="login-header">
+            <div class="logo-text">FUTURAMA</div>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Вход в панель управления</p>
+        </div>
 
-            <form method="POST" action="login.php">
-                <div class="form-group">
-                    <label for="username">Логин</label>
-                    <input type="text" id="username" name="username" class="form-control" required placeholder="Введите ваш логин" autofocus>
+        <?php if ($error): ?>
+            <div class="error-msg">
+                <i class="fas fa-exclamation-circle" style="margin-right: 8px;"></i> <?= htmlspecialchars($error) ?>
+            </div>
+        <?php endif; ?>
+
+        <form method="POST">
+            <div class="form-group">
+                <label>ИМЯ ПОЛЬЗОВАТЕЛЯ</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-user"></i>
+                    <input type="text" name="username" class="form-input" placeholder="Введите ник..." required>
                 </div>
-                
-                <div class="form-group">
-                    <label for="password">Пароль</label>
-                    <div class="password-wrapper">
-                        <input type="password" id="password" name="password" class="form-control" required placeholder="Введите пароль" style="padding-right: 40px;">
-                        <span class="toggle-password" id="togglePassword">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="eye-icon">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </span>
-                    </div>
+            </div>
+            <div class="form-group">
+                <label>ПАРОЛЬ</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" name="password" class="form-input" placeholder="••••••••" required>
                 </div>
-                
-                <button type="submit" class="btn btn-primary btn-login">Войти в панель</button>
-            </form>
+            </div>
+            <button type="submit" class="login-btn">
+                ВОЙТИ В СИСТЕМУ
+            </button>
+        </form>
+
+        <div style="margin-top: 2rem; text-align: center;">
+            <p style="color: #475569; font-size: 0.75rem;">Powered by Futurama Staff System</p>
         </div>
     </div>
-
-    <script>
-        const togglePassword = document.querySelector('#togglePassword');
-        const password = document.querySelector('#password');
-
-        togglePassword.addEventListener('click', function (e) {
-            // Переключаем тип поля
-            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
-            password.setAttribute('type', type);
-            
-            // Опционально: меняем иконку (перечеркиваем глаз)
-            if (type === 'text') {
-                this.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                    </svg>
-                `;
-            } else {
-                this.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                `;
-            }
-        });
-    </script>
 </body>
 </html>

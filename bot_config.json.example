@@ -1,0 +1,6 @@
+{
+    "token": "YOUR_DISCORD_BOT_TOKEN",
+    "client_id": "YOUR_DISCORD_CLIENT_ID",
+    "api_base_url": "http://your-site.com",
+    "api_token": "YOUR_API_SECRET_TOKEN"
+}

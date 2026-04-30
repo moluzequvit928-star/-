@@ -23,6 +23,7 @@ if ($role !== 'admin' && $role !== 'curator') {
     <link rel="icon" type="image/png" href="favicon_futurama_staff_1776084855108.png">
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .reattestation-card {
             background: rgba(30, 41, 59, 0.4);
@@ -72,15 +73,38 @@ if ($role !== 'admin' && $role !== 'curator') {
             <header class="header glass">
                 <div class="header-titles">
                     <h1>Переаттестация</h1>
-                    <p style="color: #94A3B8; font-size: 0.85rem;">Очередь мастеров на проверку знаний: <span id="total-count" style="color: #A78BFA;">0</span></p>
+                    <p style="color: #94A3B8; font-size: 0.85rem;">Управление очередью и проверка знаний</p>
                 </div>
                 <div class="user-profile">
-                    <img src="<?= htmlspecialchars($avatar_url) ?>" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid #A78BFA44;">
-                    <span style="margin-left: 8px; font-weight: 500; color: #A78BFA;"><?= htmlspecialchars($username) ?></span>
+                    <a href="logout.php" class="btn-logout-premium">
+                        <i class="fas fa-sign-out-alt"></i> Выйти
+                    </a>
                 </div>
             </header>
 
             <section class="content">
+                <!-- КАРТОЧКИ СТАТИСТИКИ -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                    <div class="card" style="margin-bottom: 0; padding: 1.5rem; display: flex; align-items: center; gap: 1.2rem;">
+                        <div style="width: 50px; height: 50px; background: rgba(99, 102, 241, 0.1); color: var(--accent); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                            <i class="fas fa-list-ul"></i>
+                        </div>
+                        <div>
+                            <div id="stat-total" style="font-size: 1.5rem; font-weight: 800; color: #fff;">0</div>
+                            <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Всего назначено</div>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-bottom: 0; padding: 1.5rem; display: flex; align-items: center; gap: 1.2rem;">
+                        <div style="width: 50px; height: 50px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div>
+                            <div id="stat-overdue" style="font-size: 1.5rem; font-weight: 800; color: #ef4444;">0</div>
+                            <div style="color: #94a3b8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Просрочено</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="reattestation-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h2 style="margin: 0; font-size: 1.1rem; letter-spacing: 0.5px;">Список саппортов</h2>
@@ -116,6 +140,9 @@ if ($role !== 'admin' && $role !== 'curator') {
             return new Date(parts[2], parts[1] - 1, parts[0]);
         }
 
+        const userRole = "<?php echo $_SESSION['role']; ?>";
+        const userName = "<?php echo $_SESSION['username']; ?>".toLowerCase();
+
         function loadQueue() {
             const list = document.getElementById('reattestation-list');
             list.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 3rem;">Загрузка данных...</td></tr>';
@@ -124,16 +151,21 @@ if ($role !== 'admin' && $role !== 'curator') {
                 .then(r => r.json())
                 .then(res => {
                     if (res.success) {
-                        document.getElementById('total-count').innerText = res.data.length;
-                        if (res.data.length === 0) {
-                            list.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 3rem; color: #64748B;">Список пуст</td></tr>';
-                            return;
+                        // ФИЛЬТРАЦИЯ: Админ видит всех, кураторы - только своих
+                        let filteredData = res.data;
+                        if (userRole !== 'admin') {
+                            filteredData = res.data.filter(item => {
+                                const curatorName = (item.curator || "").toLowerCase();
+                                return curatorName === userName;
+                            });
                         }
 
                         const now = new Date();
                         now.setHours(0,0,0,0);
+                        
+                        let overdueCount = 0;
 
-                        list.innerHTML = res.data.map(item => {
+                        list.innerHTML = filteredData.map(item => {
                             let dateHtml = '<span style="color: #64748B;">—</span>';
                             const targetDate = parseRuDate(item.date);
                             
@@ -143,6 +175,7 @@ if ($role !== 'admin' && $role !== 'curator') {
                                 
                                 if (diffDays < 0) {
                                     dateHtml = `<div class="date-badge date-overdue">Просрочено ${Math.abs(diffDays)} д.</div>`;
+                                    overdueCount++;
                                 } else if (diffDays === 0) {
                                     dateHtml = `<div class="date-badge date-today">Сегодня</div>`;
                                 } else {
@@ -163,6 +196,13 @@ if ($role !== 'admin' && $role !== 'curator') {
                                     <td style="text-align: right;"><a href="conduct.php?id=${item.id}&nick=${encodeURIComponent(item.nickname)}" class="btn-start">Начать проверку</a></td>
                                 </tr>`;
                         }).join('');
+
+                        document.getElementById('stat-total').innerText = filteredData.length;
+                        document.getElementById('stat-overdue').innerText = overdueCount;
+
+                        if (filteredData.length === 0) {
+                            list.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 3rem; color: #64748B;">Для вас нет назначенных переаттестаций</td></tr>';
+                        }
                     }
                 });
         }
