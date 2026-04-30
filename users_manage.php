@@ -230,8 +230,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                             <div class="user-avatar-container" style="position: relative;">
                                                 <img src="<?= getAvatarUrl($u['discord_id'], $u['username']) ?>" 
                                                      style="width: 40px; height: 40px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1);" 
-                                                     alt=""
-                                                     onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=<?= urlencode($u['username']) ?>&backgroundColor=b6e3f4,c0aede,d1d4f9'">
+                                                     alt="">
                                             </div>
                                             <div>
                                                 <div style="font-weight: 700; color: #fff;"><?= htmlspecialchars($u['username']) ?></div>

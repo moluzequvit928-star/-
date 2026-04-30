@@ -141,9 +141,8 @@ require_once 'user_header.php';
                             if (!members || members.length === 0) return '';
                             const html = members.map(member => `
                                 <div class="staff-card" ${member.discord_id ? `data-discord-id="${member.discord_id}"` : ''}>
-                                    <img class="staff-avatar" src="${member.discord_id && member.discord_id !== 'system' ? `http://${window.location.hostname}:3000/avatar?id=${member.discord_id}` : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(member.nick)}&backgroundColor=b6e3f4,c0aede,d1d4f9`}" 
+                                    <img class="staff-avatar" src="avatar.php?id=${member.discord_id || ''}&seed=${encodeURIComponent(member.nick)}" 
                                          alt="${member.nick}" 
-                                         onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(member.nick)}&backgroundColor=b6e3f4,c0aede,d1d4f9'"
                                          id="avatar-${member.nick.replace(/\s+/g, '-')}">
                                     <div class="staff-info">
                                         <div class="staff-name">${member.nick}</div>

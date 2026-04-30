@@ -202,8 +202,7 @@ $fallback_avatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencod
                     <div class="u-avatar-wrap">
                         <img src="<?= $u_avatar ?>" 
                              class="u-avatar-img" 
-                             alt="Avatar"
-                             onerror="this.src='<?= $fallback_avatar ?>'">
+                             alt="Avatar">
                     </div>
                     <div class="u-info">
                         <div class="u-badges">
