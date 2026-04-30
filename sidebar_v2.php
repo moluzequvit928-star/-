@@ -10,10 +10,23 @@ try {
 } catch (Exception $e) {}
 ?>
 <aside class="sidebar">
-    <div class="sidebar-header" style="padding-top: 1rem; margin-bottom: 2.5rem;">
-        <div class="logo" style="font-size: 1.6rem; display: flex; align-items: center;">
+    <div class="sidebar-header" style="padding-top: 1rem; margin-bottom: 2rem;">
+        <div class="logo" style="font-size: 1.6rem; display: flex; align-items: center; margin-bottom: 1.5rem;">
             <i class="fas fa-rocket" style="color: #A78BFA; margin-right: 12px; font-size: 1.4rem;"></i>
             <span>Futurama <span style="color: #A78BFA; font-weight: 800;">Staff</span></span>
+        </div>
+
+        <?php 
+        $my_discord = $_SESSION['discord_id'] ?? '';
+        $my_name = $_SESSION['username'] ?? 'Гость';
+        $my_avatar = getAvatarUrl($my_discord, $my_name);
+        ?>
+        <div class="sidebar-user-card" style="display: flex; align-items: center; gap: 12px; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); margin-top: 1rem;">
+            <img src="<?= $my_avatar ?>" style="width: 40px; height: 40px; border-radius: 10px; object-fit: cover;" alt="Me">
+            <div style="overflow: hidden;">
+                <div style="font-weight: 700; color: #fff; font-size: 0.9rem; white-space: nowrap; text-overflow: ellipsis;"><?= htmlspecialchars($my_name) ?></div>
+                <div style="font-size: 0.7rem; color: #A78BFA; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;"><?= $role_display ?? '' ?></div>
+            </div>
         </div>
     </div>
 

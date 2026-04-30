@@ -115,4 +115,22 @@ function getMasterNicksForCurator($curatorNick) {
 
     return array_unique($masterNicks);
 }
+
+/**
+ * Возвращает URL аватарки пользователя.
+ * Пробует достучаться до локального бота, если не выходит — Dicebear.
+ */
+function getAvatarUrl($discordId, $username = '') {
+    if (!$discordId || $discordId === 'system' || !is_numeric($discordId)) {
+        return "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($username ?: 'default') . "&backgroundColor=b6e3f4,c0aede,d1d4f9";
+    }
+
+    // Определяем хост для обращения к боту (порт 3000)
+    // Если мы на localhost — используем localhost, если на сервере — используем домен сервера
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    // Убираем порт из HTTP_HOST, если он там есть (например, :8080)
+    $host = explode(':', $host)[0];
+    
+    return "http://{$host}:3000/avatar?id={$discordId}";
+}
 ?>

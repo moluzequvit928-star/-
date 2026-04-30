@@ -46,14 +46,9 @@ $role_map = [
 ];
 $u_role_display = $role_map[$u_role] ?? $u_role;
 
-// Аватарка по умолчанию (Dicebear)
+// Аватарка: используем общую функцию
+$u_avatar = getAvatarUrl($u_discord, $u_name);
 $fallback_avatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencode($u_name) . "&backgroundColor=b6e3f4,c0aede,d1d4f9";
-$u_avatar = $fallback_avatar;
-
-// Если есть бот-мост, пробуем взять реальную аватарку
-if (is_numeric($u_discord)) {
-    $u_avatar = "http://localhost:3000/avatar?id={$u_discord}";
-}
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -191,7 +186,10 @@ if (is_numeric($u_discord)) {
             <!-- ШАПКА С ВЫХОДОМ -->
             <header class="header glass" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                 <h1 style="font-family: 'Outfit', sans-serif; font-size: 2rem; color: #fff;">Профиль</h1>
-                <div class="user-profile">
+                <div class="user-profile" style="display: flex; align-items: center; gap: 1rem;">
+                    <img src="<?= getAvatarUrl($_SESSION['discord_id'], $_SESSION['username']) ?>" 
+                         style="width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);" 
+                         alt="">
                     <a href="logout.php" class="btn-logout-premium">
                         <i class="fas fa-sign-out-alt"></i> Выйти
                     </a>

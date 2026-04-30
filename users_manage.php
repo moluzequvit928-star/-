@@ -187,7 +187,10 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </button>
                     <?php endif; ?>
                 </div>
-                <div class="user-profile">
+                <div class="user-profile" style="display: flex; align-items: center; gap: 1rem;">
+                    <img src="<?= getAvatarUrl($_SESSION['discord_id'], $_SESSION['username']) ?>" 
+                         style="width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);" 
+                         alt="">
                     <a href="logout.php" class="btn-logout-premium"><i class="fas fa-sign-out-alt"></i> Выйти</a>
                 </div>
             </header>
@@ -224,8 +227,11 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <tr class="user-row">
                                     <td>
                                         <div style="display: flex; align-items: center; gap: 12px;">
-                                            <div style="width: 36px; height: 36px; border-radius: 12px; background: rgba(99, 102, 241, 0.1); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.8rem; border: 1px solid rgba(99, 102, 241, 0.2);">
-                                                <?= strtoupper(substr($u['username'], 0, 1)) ?>
+                                            <div class="user-avatar-container" style="position: relative;">
+                                                <img src="<?= getAvatarUrl($u['discord_id'], $u['username']) ?>" 
+                                                     style="width: 40px; height: 40px; border-radius: 12px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1);" 
+                                                     alt=""
+                                                     onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=<?= urlencode($u['username']) ?>&backgroundColor=b6e3f4,c0aede,d1d4f9'">
                                             </div>
                                             <div>
                                                 <div style="font-weight: 700; color: #fff;"><?= htmlspecialchars($u['username']) ?></div>

@@ -32,7 +32,10 @@ require_once 'user_header.php';
                     <p style="color: var(--text-secondary); font-size: 0.9rem;">Добро пожаловать в систему управления персоналом.</p>
                 </div>
                 
-                <div class="user-profile">
+                <div class="user-profile" style="display: flex; align-items: center; gap: 1rem;">
+                    <img src="<?= getAvatarUrl($_SESSION['discord_id'], $_SESSION['username']) ?>" 
+                         style="width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);" 
+                         alt="">
                     <a href="logout.php" class="btn-logout-premium">
                         <i class="fas fa-sign-out-alt"></i> Выйти
                     </a>
@@ -138,8 +141,9 @@ require_once 'user_header.php';
                             if (!members || members.length === 0) return '';
                             const html = members.map(member => `
                                 <div class="staff-card" ${member.discord_id ? `data-discord-id="${member.discord_id}"` : ''}>
-                                    <img class="staff-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(member.nick)}&backgroundColor=b6e3f4,c0aede,d1d4f9" alt="${member.nick}" 
-                                         onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback&backgroundColor=b6e3f4'"
+                                    <img class="staff-avatar" src="${member.discord_id && member.discord_id !== 'system' ? `http://${window.location.hostname}:3000/avatar?id=${member.discord_id}` : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(member.nick)}&backgroundColor=b6e3f4,c0aede,d1d4f9`}" 
+                                         alt="${member.nick}" 
+                                         onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(member.nick)}&backgroundColor=b6e3f4,c0aede,d1d4f9'"
                                          id="avatar-${member.nick.replace(/\s+/g, '-')}">
                                     <div class="staff-info">
                                         <div class="staff-name">${member.nick}</div>
@@ -179,8 +183,6 @@ require_once 'user_header.php';
                         status.style.background = 'rgba(16, 185, 129, 0.1)';
                         status.style.color = '#10B981';
 
-                        setTimeout(loadDiscordAvatars, 100);
-
                     } else {
                         console.error('Ошибка API:', data.error);
                     }
@@ -189,33 +191,6 @@ require_once 'user_header.php';
                     console.error('Ошибка при запросе:', err);
                 });
         });
-
-        function loadDiscordAvatars() {
-            const cards = document.querySelectorAll('.staff-card[data-discord-id]');
-            console.log('Запрос аватарок через локального бота...');
-            
-            cards.forEach((card, index) => {
-                const discordId = card.getAttribute('data-discord-id');
-                const avatarImg = card.querySelector('.staff-avatar');
-                const nick = card.querySelector('.staff-name').textContent;
-                
-                if (discordId && discordId !== 'system' && discordId.length > 10) {
-                    // Теперь мы спрашиваем вашего бота! 
-                    // Если бот запущен, он мгновенно отдаст настоящую аватарку.
-                    const botUrl = `http://localhost:3000/avatar?id=${discordId}`;
-                    
-                    // Проверяем, доступен ли бот, прежде чем ставить картинку
-                    // (Чтобы не было битых картинок, если бот выключен)
-                    avatarImg.src = botUrl;
-                    
-                    // Если бот не нашел (404), вернем DiceBear через onerror
-                    avatarImg.onerror = function() {
-                        this.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(nick)}`;
-                        this.onerror = null;
-                    };
-                }
-            });
-        }
     </script>
 </body>
 </html>

@@ -35,6 +35,8 @@ if (isset($_SESSION['username'])) {
     } catch (Exception $e) {}
 }
 
+require_once 'staff_functions.php';
+
 // Красивое название роли
 $role_names = [
     'admin' => 'Администратор',
@@ -44,11 +46,8 @@ $role_names = [
 ];
 $role_display = $role_names[$current_role] ?? $current_role;
 
-// Аватарка: обращаемся к Lanyard API (бесплатно, без токена)
-if ($discord_id && $discord_id !== 'system' && is_numeric($discord_id)) {
-    // Используем локальный бот-мост на порту 3000 для получения актуальной аватарки
-    $avatar_url = "http://localhost:3000/avatar?id={$discord_id}";
-}
+// Аватарка: используем общую функцию
+$avatar_url = getAvatarUrl($discord_id, $username);
 
 $sidebarPendingCount = 0;
 ?>
