@@ -15,7 +15,7 @@ require_once 'user_header.php';
     <title>Настройки | Панель</title>
     <link rel="icon" type="image/png" href="favicon_futurama_staff_1776084855108.png">
     <link rel="stylesheet" href="index.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;700&family=Montserrat:wght@400;600;700&family=Roboto+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .theme-grid {
@@ -153,6 +153,7 @@ require_once 'user_header.php';
             else if (font.includes('Outfit')) document.getElementById('font-outfit').classList.add('active');
             else if (font.includes('Montserrat')) document.getElementById('font-montserrat').classList.add('active');
             else if (font.includes('Roboto Mono')) document.getElementById('font-roboto').classList.add('active');
+            else if (font.includes('Roboto')) document.getElementById('font-roboto').classList.add('active');
         }
 
         document.addEventListener('DOMContentLoaded', () => {

@@ -1,16 +1,47 @@
 :root {
-    /* Color Palette - Deep & Modern */
+    /* Font Family */
+    --font-family: 'Inter', 'Outfit', sans-serif;
+
+    /* Color Palette - Deep & Modern (Default Dark) */
     --bg-dark: #0f1117;
     --bg-card: #161922;
     --accent: #6366f1;
     --accent-glow: rgba(99, 102, 241, 0.5);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
+    --text-muted: #64748b;
     --sidebar-width: 280px;
     --border-color: rgba(255, 255, 255, 0.05);
     --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
     --card-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Theme: Deep Black */
+[data-theme="black"] {
+    --bg-dark: #000000;
+    --bg-card: #0a0a0a;
+    --border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Theme: Scarlet Red */
+[data-theme="red"] {
+    --bg-dark: #1a0505;
+    --bg-card: #250808;
+    --accent: #ff4444;
+    --accent-glow: rgba(255, 68, 68, 0.5);
+    --gradient-primary: linear-gradient(135deg, #ff4444 0%, #991b1b 100%);
+}
+
+/* Theme: Light */
+[data-theme="light"] {
+    --bg-dark: #f1f5f9;
+    --bg-card: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --border-color: rgba(0, 0, 0, 0.08);
+    --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
 }
 
 .btn-logout-premium {
@@ -40,7 +71,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Inter', 'Outfit', sans-serif;
+    font-family: var(--font-family);
 }
 
 body {
@@ -406,6 +437,18 @@ body {
 .btn-danger:hover {
     background: #ef4444;
     color: white;
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="light"] .glass {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* Mobile Responsive */

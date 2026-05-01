@@ -47,6 +47,7 @@ try {
             </ul>
         </div>
 
+        <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
         <div class="nav-section">
             <div class="nav-label">УПРАВЛЕНИЕ</div>
             <ul class="nav-menu">
@@ -62,6 +63,7 @@ try {
                 </li>
             </ul>
         </div>
+        <?php endif; ?>
 
         <div class="nav-section">
             <div class="nav-label">РЕСУРСЫ</div>
@@ -92,7 +94,7 @@ try {
                     </a>
                 </li>
                 <?php endif; ?>
-                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
+                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator', 'master'])): ?>
                 <li class="nav-item">
                     <a href="add_support.php" class="nav-link <?= $currentPage === 'add_support.php' ? 'active' : '' ?>">
                         <i class="fas fa-plus-circle"></i> <span>Добавить саппорта</span>

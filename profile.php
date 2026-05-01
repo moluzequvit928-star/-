@@ -57,7 +57,7 @@ $fallback_avatar = "https://api.dicebear.com/7.x/avataaars/svg?seed=" . urlencod
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Профиль <?= htmlspecialchars($u_name) ?> | Futurama Staff</title>
     <link rel="stylesheet" href="index.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;800&family=Montserrat:wght@400;600;700&family=Roboto+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .profile-container {
