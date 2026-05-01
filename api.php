@@ -212,7 +212,8 @@ if ($action === 'set_reattestation_result') {
         $webhook = $appConfig['app_script_webhook_url'] ?? '';
         if ($webhook) {
             $payload = ['token' => $appConfig['app_script_webhook_token'] ?? '', 'action' => 'update_reattestation', 'discord_id' => $discordId, 'result' => $result, 'curator' => $curator];
-            $ch = curl_init($webhook);
+            $webhookUrl = $webhook . (strpos($webhook, '?') === false ? '?' : '&') . 'token=' . ($appConfig['app_script_webhook_token'] ?? '') . '&action=' . $action;
+            $ch = curl_init($webhookUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
@@ -242,7 +243,8 @@ if ($action === 'add_support') {
         $webhook = $appConfig['app_script_webhook_url'] ?? '';
         if ($webhook) {
             $payload = ['token' => $appConfig['app_script_webhook_token'] ?? '', 'action' => 'add_support', 'nick' => $nick, 'discord_id' => $discordId, 'shift' => $shift, 'date' => $_POST['date'] ?? date('d.m.Y')];
-            $ch = curl_init($webhook);
+            $webhookUrl = $webhook . (strpos($webhook, '?') === false ? '?' : '&') . 'token=' . ($appConfig['app_script_webhook_token'] ?? '') . '&action=' . $action;
+            $ch = curl_init($webhookUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
