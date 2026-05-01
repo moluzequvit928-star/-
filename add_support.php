@@ -8,7 +8,7 @@ require_once 'db.php';
 require_once 'user_header.php';
 
 $current_role = $_SESSION['role'] ?? 'master';
-if (!in_array($current_role, ['admin', 'chief', 'curator'])) {
+if (!in_array($current_role, ['admin', 'chief', 'curator', 'master'])) {
     die("У вас нет прав для доступа к этой странице.");
 }
 ?>
@@ -267,7 +267,7 @@ if (!in_array($current_role, ['admin', 'chief', 'curator'])) {
                     hiddenInput.value = '';
                 } else {
                     status.className = 'alert alert-error';
-                    status.innerHTML = 'Ошибка: ' + res.error;
+                    status.innerHTML = 'Ошибка: ' + (res.error || 'Неизвестная ошибка сервера');
                 }
             } catch (err) {
                 status.style.display = 'block';

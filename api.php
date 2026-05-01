@@ -249,12 +249,16 @@ if ($action === 'add_support') {
             curl_exec($ch);
             curl_close($ch);
 
-            if (isset($_SESSION['discord_id'])) {
-                $pdo->prepare("UPDATE users SET added_supports_count = added_supports_count + 1 WHERE discord_id = ?")->execute([$_SESSION['discord_id']]);
+            if (isset($_SESSION['discord_id']) && !empty($_SESSION['discord_id'])) {
+                try {
+                    $pdo->prepare("UPDATE users SET added_supports_count = added_supports_count + 1 WHERE discord_id = ?")->execute([$_SESSION['discord_id']]);
+                } catch (Exception $e) {}
             }
+        } else {
+            throw new Exception("Webhook URL is not configured in app_config.php");
         }
         echo json_encode(['success' => true]);
-    } catch (Exception $e) { echo json_encode(['success' => false]); }
+    } catch (Exception $e) { echo json_encode(['success' => false, 'error' => $e->getMessage()]); }
     exit;
 }
 

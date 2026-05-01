@@ -44,6 +44,23 @@ try {
         password VARCHAR(255) NOT NULL,
         discord_id VARCHAR(100) DEFAULT NULL,
         role VARCHAR(50) DEFAULT 'master',
+        added_supports_count INT DEFAULT 0,
+        reattestations_count INT DEFAULT 0,
+        last_seen DATETIME DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN added_supports_count INT DEFAULT 0"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN reattestations_count INT DEFAULT 0"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN last_seen DATETIME DEFAULT NULL"); } catch (Exception $e) {}
+
+    // Таблица архива переаттестаций
+    $pdo->exec("CREATE TABLE IF NOT EXISTS reattestations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        discord_id VARCHAR(50) NOT NULL,
+        discord_nickname VARCHAR(100) NOT NULL,
+        curator VARCHAR(100) NOT NULL,
+        result VARCHAR(20) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
 
@@ -52,14 +69,18 @@ try {
     if (file_exists($users_json)) {
         $users_data = json_decode(file_get_contents($users_json), true);
         if (is_array($users_data)) {
-            // Используем REPLACE INTO чтобы обновлять пароли и роли, если бот их изменил
             $insert_stmt = $pdo->prepare("REPLACE INTO users (username, password, discord_id, role) VALUES (?, ?, ?, ?)");
             foreach ($users_data as $uname => $udata) {
+                // Принудительно приводим к строкам и проверяем наличие данных
+                $u_id = !empty($udata['discord_id']) ? (string)$udata['discord_id'] : 'system';
+                $u_role = $udata['role'] ?? ($uname === 'admin' ? 'admin' : 'master');
+                $u_pass = $udata['password'] ?? 'admin123';
+                
                 $insert_stmt->execute([
-                    $uname,
-                    $udata['password'] ?? 'admin123',
-                    $udata['discord_id'] ?? 'system',
-                    $udata['role'] ?? ($uname === 'admin' ? 'admin' : 'master')
+                    (string)$uname,
+                    (string)$u_pass,
+                    (string)$u_id,
+                    (string)$u_role
                 ]);
             }
         }
