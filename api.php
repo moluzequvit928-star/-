@@ -220,9 +220,15 @@ if ($action === 'set_reattestation_result') {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-            curl_exec($ch);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            $response = curl_exec($ch);
             curl_close($ch);
+
+            $resultData = json_decode($response, true);
+            if (!$resultData || !isset($resultData['ok']) || $resultData['ok'] !== true) {
+                $errorMsg = $resultData['error'] ?? "Неизвестная ошибка Google Script";
+                throw new Exception($errorMsg);
+            }
             
             if (isset($_SESSION['discord_id'])) {
                 $pdo->prepare("UPDATE users SET reattestations_count = reattestations_count + 1 WHERE discord_id = ?")->execute([$_SESSION['discord_id']]);
@@ -251,9 +257,20 @@ if ($action === 'add_support') {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-            curl_exec($ch);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
+
+            if ($response === false) {
+                throw new Exception("Ошибка cURL: " . curl_error($ch));
+            }
+
+            $resultData = json_decode($response, true);
+            if (!$resultData || !isset($resultData['ok']) || $resultData['ok'] !== true) {
+                $errorMsg = $resultData['error'] ?? "Неизвестная ошибка Google Script (HTTP $httpCode)";
+                throw new Exception($errorMsg);
+            }
 
             if (isset($_SESSION['discord_id']) && !empty($_SESSION['discord_id'])) {
                 try {
