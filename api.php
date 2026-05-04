@@ -53,18 +53,16 @@ function loadCsvRows($url)
         @mkdir($cacheDir, 0777, true);
 
     $cacheFile = $cacheDir . '/' . md5($url) . '.csv';
-    $cacheTime = 300; // 5 минут (300 секунд)
+    $cacheTime = 300; // 5 минут
 
-    // Если кэш есть и он свежий - читаем его
     if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheTime)) {
         $csvData = file_get_contents($cacheFile);
     } else {
-        // Пробуем скачать с таймаутом 3 секунды через cURL
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         $csvData = curl_exec($ch);
@@ -73,18 +71,20 @@ function loadCsvRows($url)
         if ($csvData) {
             file_put_contents($cacheFile, $csvData);
         } elseif (file_exists($cacheFile)) {
-            // Если Google упал, но есть хоть какой-то кэш - берем его
             $csvData = file_get_contents($cacheFile);
         } else {
             return [];
         }
     }
 
-    $lines = explode("\n", $csvData);
     $rows = [];
-    foreach ($lines as $line) {
-        $rows[] = str_getcsv($line);
+    $temp = fopen('php://temp', 'r+');
+    fwrite($temp, $csvData);
+    rewind($temp);
+    while (($row = fgetcsv($temp)) !== false) {
+        $rows[] = $row;
     }
+    fclose($temp);
     return $rows;
 }
 
@@ -189,20 +189,25 @@ function getReattestationQueue()
     foreach ($rows as $index => $row) {
         if ($index < 5)
             continue;
-        $nick = trim((string) ($row[3] ?? ''));
+            
+        // Очистка данных
+        $row = array_map(function($v) { return trim((string)$v); }, $row);
+            
+        $nick = $row[3] ?? '';
         if ($nick === '' || $nick === 'Ник')
             continue;
-        $status = mb_strtolower(trim((string) ($row[7] ?? '')));
+            
+        $status = mb_strtolower($row[7] ?? '');
         // Если в статусе есть "сдал", пропускаем этого человека
         if (mb_strpos($status, 'сдал') !== false) continue;
 
-        if ($status === '' || $status === '-' || $status === '—') {
+        if ($status === '' || $status === '-' || $status === '—' || $status === 'нет') {
             $queue[] = [
                 'nickname' => $nick,
-                'id' => trim((string) ($row[4] ?? '')),
-                'date' => trim((string) ($row[5] ?? '')),
-                'curator' => trim((string) ($row[6] ?? '')) ?: 'Не назначен',
-                'attempt_count' => trim((string) ($row[8] ?? '')) ?: '1'
+                'id' => $row[4] ?? '',
+                'date' => $row[5] ?? '',
+                'curator' => ($row[6] ?? '') ?: 'Не назначен',
+                'attempt_count' => ($row[8] ?? '') ?: '1'
             ];
         }
     }
