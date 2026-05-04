@@ -141,7 +141,9 @@ if ($role !== 'admin' && $role !== 'curator') {
         }
 
         const userRole = "<?php echo $_SESSION['role']; ?>";
-        const userName = "<?php echo $_SESSION['username']; ?>".toLowerCase();
+        // Нормализация ника (нижний регистр + удаление подчеркиваний) для надежного сравнения
+        const normalize = (str) => (str || "").toLowerCase().replace(/_/g, '').trim();
+        const userNameNormalized = normalize("<?php echo $_SESSION['username']; ?>");
 
         function loadQueue() {
             const list = document.getElementById('reattestation-list');
@@ -155,8 +157,7 @@ if ($role !== 'admin' && $role !== 'curator') {
                         let filteredData = res.data;
                         if (userRole !== 'admin') {
                             filteredData = res.data.filter(item => {
-                                const curatorName = (item.curator || "").toLowerCase();
-                                return curatorName === userName;
+                                return normalize(item.curator) === userNameNormalized;
                             });
                         }
 
