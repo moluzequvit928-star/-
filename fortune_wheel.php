@@ -326,9 +326,11 @@ require_once 'user_header.php';
         function spinWheel() {
             if (options.length === 0) return;
             winnerBox.style.display = 'none';
-            spinAngleStart = Math.random() * 10 + 10;
+            // Увеличиваем начальную скорость (было ~10-20, стало ~25-35)
+            spinAngleStart = Math.random() * 10 + 25;
             spinTime = 0;
-            spinTimeTotal = Math.random() * 3 + 4 * 1000;
+            // Увеличиваем время вращения (было 4-7 сек, стало 8-12 сек)
+            spinTimeTotal = Math.random() * 4000 + 8000;
             spinBtn.disabled = true;
             rotateWheel();
         }
