@@ -61,6 +61,13 @@ try {
                         <i class="fas fa-archive"></i> <span>Архив</span>
                     </a>
                 </li>
+                <?php if (($_SESSION['role'] ?? 'master') === 'admin'): ?>
+                <li class="nav-item">
+                    <a href="fortune_wheel.php" class="nav-link <?= $currentPage === 'fortune_wheel.php' ? 'active' : '' ?>">
+                        <i class="fas fa-dharmachakra"></i> <span>Колесо фортуны</span>
+                    </a>
+                </li>
+                <?php endif; ?>
                 <?php if (($_SESSION['role'] ?? 'master') === 'curator'): ?>
                 <li class="nav-item">
                     <a href="#" onclick="alert('Данный раздел находится в разработке'); return false;" class="nav-link">
