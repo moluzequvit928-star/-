@@ -214,6 +214,65 @@ function getReattestationQueue()
     return $queue;
 }
 
+// Получение свободных слотов по сменам
+function getShiftSlots()
+{
+    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));
+    $rows = loadCsvRows($csvUrl);
+
+    $shifts = [];
+    $currentShift = null;
+
+    $shiftTimes = [
+        '0' => 'Свободный график',
+        '1' => '00:00 - 02:00',
+        '2' => '02:00 - 04:00',
+        '3' => '04:00 - 06:00',
+        '4' => '06:00 - 08:00',
+        '5' => '08:00 - 10:00',
+        '6' => '10:00 - 12:00',
+        '7' => '12:00 - 14:00',
+        '8' => '14:00 - 16:00',
+        '9' => '16:00 - 18:00',
+        '10' => '18:00 - 20:00',
+        '11' => '20:00 - 22:00',
+        '12' => '22:00 - 00:00'
+    ];
+
+    foreach ($rows as $i => $row) {
+        $cell = trim($row[2] ?? '');
+        if (preg_match('/^(\d+)\s+смена/i', $cell, $matches)) {
+            $currentShift = $matches[1];
+            $shifts[$currentShift] = [
+                'id' => $currentShift,
+                'label' => $cell,
+                'time' => $shiftTimes[$currentShift] ?? '',
+                'free_slots' => 0
+            ];
+            continue;
+        }
+
+        if ($currentShift !== null) {
+            if (trim($row[1] ?? '') === 'Дата' || trim($row[2] ?? '') === 'Никнейм') continue;
+            
+            if (count($row) > 5) {
+                $nick = trim($row[2] ?? '');
+                // Проверяем, является ли строка частью таблицы смены (обычно там есть дефис или 0/2)
+                if (trim($row[4] ?? '') === '-' || trim($row[6] ?? '') === '0/2') {
+                     if ($nick === '' || $nick === '-' || $nick === '—') {
+                         $shifts[$currentShift]['free_slots']++;
+                     }
+                }
+            }
+        }
+    }
+    
+    // Сортировка: 0 в начало или в конец? На скриншоте 0 в начале.
+    ksort($shifts);
+    
+    return array_values($shifts);
+}
+
 // РОУТИНГ
 if (empty($action)) {
     $data = getAllDashboardData($pdo);
@@ -227,6 +286,11 @@ if (empty($action)) {
 
 if ($action === 'reattestation_queue') {
     echo json_encode(['success' => true, 'data' => getReattestationQueue()]);
+    exit;
+}
+
+if ($action === 'get_shift_slots') {
+    echo json_encode(['success' => true, 'data' => getShiftSlots()]);
     exit;
 }
 

@@ -9,7 +9,11 @@ try {
     }
 } catch (Exception $e) {}
 ?>
-<aside class="sidebar">
+<button class="mobile-nav-toggle" id="mobileMenuBtn">
+    <i class="fas fa-bars"></i>
+</button>
+
+<aside class="sidebar" id="mainSidebar">
     <div class="sidebar-header" style="padding-top: 1rem; margin-bottom: 2rem;">
         <div class="logo" style="font-size: 1.6rem; display: flex; align-items: center; margin-bottom: 1.5rem;">
             <i class="fas fa-rocket" style="color: #A78BFA; margin-right: 12px; font-size: 1.4rem;"></i>
@@ -123,3 +127,31 @@ try {
         </div>
     </nav>
 </aside>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const menuBtn = document.getElementById('mobileMenuBtn');
+        const sidebar = document.getElementById('mainSidebar');
+        
+        if (menuBtn && sidebar) {
+            menuBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                sidebar.classList.toggle('open');
+                const icon = menuBtn.querySelector('i');
+                if (sidebar.classList.contains('open')) {
+                    icon.classList.replace('fa-bars', 'fa-times');
+                } else {
+                    icon.classList.replace('fa-times', 'fa-bars');
+                }
+            });
+
+            // Закрытие при клике вне сайдбара
+            document.addEventListener('click', function(e) {
+                if (window.innerWidth <= 1024 && sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuBtn) {
+                    sidebar.classList.remove('open');
+                    menuBtn.querySelector('i').classList.replace('fa-times', 'fa-bars');
+                }
+            });
+        }
+    });
+</script>
