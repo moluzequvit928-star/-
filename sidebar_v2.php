@@ -44,6 +44,11 @@ try {
                         <i class="fas fa-th-large"></i> <span>Главная</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="supports.php" class="nav-link <?= $currentPage === 'supports.php' ? 'active' : '' ?>">
+                        <i class="fas fa-users"></i> <span>Список саппортов</span>
+                    </a>
+                </li>
             </ul>
         </div>
 
