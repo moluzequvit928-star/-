@@ -68,13 +68,7 @@ try {
                     </a>
                 </li>
                 <?php endif; ?>
-                <?php if (($_SESSION['role'] ?? 'master') === 'curator'): ?>
-                <li class="nav-item">
-                    <a href="#" onclick="alert('Данный раздел находится в разработке'); return false;" class="nav-link">
-                        <i class="fas fa-user-graduate"></i> <span>Собес на мастера</span>
-                    </a>
-                </li>
-                <?php endif; ?>
+
             </ul>
         </div>
         <?php endif; ?>

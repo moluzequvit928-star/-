@@ -115,6 +115,7 @@ body {
     height: 100vh;
     z-index: 100;
     transition: var(--transition);
+    overflow-y: auto;
 }
 
 .sidebar-header {

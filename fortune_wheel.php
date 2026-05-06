@@ -344,6 +344,10 @@ require_once 'user_header.php';
                 }
             });
             if (options.length === 0) options = ["Пусто"];
+            
+            // Save to localStorage
+            localStorage.setItem('fortune_wheel_options', JSON.stringify(options));
+            
             drawWheel();
         }
 
@@ -368,11 +372,23 @@ require_once 'user_header.php';
 
         function resetWheel() {
             optionsList.innerHTML = '';
-            ["Вариант 1", "Вариант 2", "Вариант 3"].forEach(opt => addOption(opt));
+            const defaultOptions = ["Вариант 1", "Вариант 2", "Вариант 3"];
+            defaultOptions.forEach(opt => addOption(opt));
             winnerBox.style.display = 'none';
+            localStorage.setItem('fortune_wheel_options', JSON.stringify(defaultOptions));
         }
 
         // Initialize
+        const savedOptions = localStorage.getItem('fortune_wheel_options');
+        if (savedOptions) {
+            try {
+                options = JSON.parse(savedOptions);
+            } catch (e) {
+                console.error("Error parsing saved options", e);
+            }
+        }
+        
+        optionsList.innerHTML = '';
         options.forEach(opt => addOption(opt));
         drawWheel();
     </script>
