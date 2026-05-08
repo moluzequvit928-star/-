@@ -1,7 +1,6 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-echo "<!-- PHP DEBUG: INDEX LOADED -->";
+error_reporting(0);
+ini_set('display_errors', 0);
 session_start();
 
 // Проверка авторизации
