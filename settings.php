@@ -57,10 +57,17 @@ require_once 'user_header.php';
         <?php require_once 'sidebar_v2.php'; ?>
         
         <main class="main-content">
-            <header class="header glass">
-                <h1>Настройки интерфейса</h1>
+            <header class="header">
+                <div class="header-title">
+                    <h1>Настройки интерфейса</h1>
+                    <p>Темы, шрифты и оформление</p>
+                </div>
+                <div class="header-actions">
+                    <a href="logout.php" class="btn-logout-premium"><i class="fas fa-sign-out-alt"></i> Выйти</a>
+                </div>
             </header>
 
+            <div class="page-body">
             <section class="content">
                 <div class="card glass">
                     <div class="card-header">
@@ -123,6 +130,7 @@ require_once 'user_header.php';
                     </div>
                 </div>
             </section>
+            </div>
         </main>
     </div>
 

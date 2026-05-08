@@ -14,7 +14,8 @@ try {
     $pdo->exec("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
     // Подключаем выбранную БД
-    $pdo->exec("USE `$dbname`");
+    $pdo->exec("USE `$dbname` ");
+    $pdo->exec("SET NAMES utf8mb4");
 
     // Таблица отчетов
     $pdo->exec("CREATE TABLE IF NOT EXISTS reports (
@@ -53,6 +54,21 @@ try {
     try { $pdo->exec("ALTER TABLE users ADD COLUMN added_supports_count INT DEFAULT 0"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE users ADD COLUMN reattestations_count INT DEFAULT 0"); } catch (Exception $e) {}
     try { $pdo->exec("ALTER TABLE users ADD COLUMN last_seen DATETIME DEFAULT NULL"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN about_me TEXT DEFAULT NULL"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN banner_url VARCHAR(255) DEFAULT NULL"); } catch (Exception $e) {}
+
+    // Таблица устных предупреждений (устников)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS warnings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        support_id VARCHAR(100) NOT NULL,
+        support_nickname VARCHAR(100) NOT NULL,
+        admin_id VARCHAR(100) NOT NULL,
+        admin_nickname VARCHAR(100) NOT NULL,
+        reason TEXT NOT NULL,
+        duration VARCHAR(50) NOT NULL,
+        expires_at DATETIME DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
 
     // Таблица архива переаттестаций
     $pdo->exec("CREATE TABLE IF NOT EXISTS reattestations (
@@ -69,9 +85,10 @@ try {
     if (file_exists($users_json)) {
         $users_data = json_decode(file_get_contents($users_json), true);
         if (is_array($users_data)) {
-            $insert_stmt = $pdo->prepare("REPLACE INTO users (username, password, discord_id, role) VALUES (?, ?, ?, ?)");
+            // Используем INSERT ... ON DUPLICATE KEY UPDATE, чтобы не затирать banner_url и about_me
+            $insert_stmt = $pdo->prepare("INSERT INTO users (username, password, discord_id, role) VALUES (?, ?, ?, ?) 
+                                          ON DUPLICATE KEY UPDATE username = VALUES(username), password = VALUES(password), role = VALUES(role)");
             foreach ($users_data as $uname => $udata) {
-                // Принудительно приводим к строкам и проверяем наличие данных
                 $u_id = !empty($udata['discord_id']) ? (string)$udata['discord_id'] : 'system';
                 $u_role = $udata['role'] ?? ($uname === 'admin' ? 'admin' : 'master');
                 $u_pass = $udata['password'] ?? 'admin123';

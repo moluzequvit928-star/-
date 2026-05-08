@@ -74,17 +74,17 @@ $approvedReports = $stmtApproved->fetchColumn();
 
         <!-- Main Content -->
         <main class="main-content">
-            <header class="header glass">
-                <h1>Информация</h1>
-                <div class="user-profile">
-                    <div class="avatar-container" style="display: flex; align-items: center; gap: 0.75rem;">
-                        <img src="<?= htmlspecialchars($avatar_url) ?>" alt="avatar" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(167, 139, 250, 0.5); object-fit: cover;">
-                        <span class="username" style="font-weight: 500; color: #A78BFA;"><?= htmlspecialchars($username) ?> <span style="font-size: 0.75rem; color: #94A3B8; font-weight: 400; margin-left: 5px;">(<?= htmlspecialchars($role_display) ?>)</span></span>
-                        <a href="logout.php" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4);">Выйти</a>
-                    </div>
+            <header class="header">
+                <div class="header-title">
+                    <h1>Информация</h1>
+                    <p>Ваша статистика и назначенный куратор</p>
+                </div>
+                <div class="header-actions">
+                    <a href="logout.php" class="btn-logout-premium"><i class="fas fa-sign-out-alt"></i> Выйти</a>
                 </div>
             </header>
 
+            <div class="page-body">
             <section class="content">
                 <div class="info-grid">
                     <!-- Общая стата -->
@@ -116,6 +116,7 @@ $approvedReports = $stmtApproved->fetchColumn();
                 </div>
 
             </section>
+            </div>
         </main>
     </div>
 

@@ -178,23 +178,21 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <?php include 'sidebar_v2.php'; ?>
         
         <main class="main-content">
-            <header class="header glass" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
-                <div style="display: flex; align-items: center; gap: 1.5rem;">
-                    <h1 style="font-family: 'Outfit', sans-serif; font-size: 2rem; color: #fff;">Управление кадрами</h1>
+            <header class="header">
+                <div class="header-title">
+                    <h1>Управление кадрами</h1>
+                </div>
+                <div class="header-actions">
                     <?php if ($current_role === 'admin'): ?>
-                        <button class="btn-edit-profile" style="background: var(--accent); border: none;" onclick="openAddModal()">
-                            <i class="fas fa-plus"></i> Добавить сотрудника
+                        <button style="background: var(--accent); border: none; color: #fff; padding: 0.6rem 1.2rem; border-radius: 10px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem;" onclick="openAddModal()">
+                            <i class="fas fa-plus"></i> Добавить
                         </button>
                     <?php endif; ?>
-                </div>
-                <div class="user-profile" style="display: flex; align-items: center; gap: 1rem;">
-                    <img src="<?= getAvatarUrl($_SESSION['discord_id'], $_SESSION['username']) ?>" 
-                         style="width: 38px; height: 38px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);" 
-                         alt="">
                     <a href="logout.php" class="btn-logout-premium"><i class="fas fa-sign-out-alt"></i> Выйти</a>
                 </div>
             </header>
 
+            <div class="page-body">
             <section class="content">
                 <?php if ($message): ?>
                     <div class="alert-box <?= $messageType === 'success' ? 'alert-success' : 'alert-error' ?>">
@@ -288,6 +286,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                 </div>
             </section>
+            </div>
         </main>
     </div>
 

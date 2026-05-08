@@ -1,0 +1,45 @@
+Array
+(
+    [time] => 14:34:45
+    [session_id] => 964646916484894741
+    [post_about] => вывыв
+    [post_banner] => uploads/banners/964646916484894741_1778156291.png
+    [raw_post] => Array
+        (
+            [action] => update_profile
+            [about_me] => вывыв
+            [banner_url] => uploads/banners/964646916484894741_1778156291.png
+        )
+
+)
+UPDATED ID: 964646916484894741, Time: 14:34:45
+Array
+(
+    [time] => 18:50:09
+    [session_id] => 964646916484894741
+    [post_about] => вывыв
+    [post_banner] => uploads/banners/964646916484894741_1778172605.png
+    [raw_post] => Array
+        (
+            [action] => update_profile
+            [about_me] => вывыв
+            [banner_url] => uploads/banners/964646916484894741_1778172605.png
+        )
+
+)
+UPDATED ID: 964646916484894741, Time: 18:50:09
+Array
+(
+    [time] => 13:04:33
+    [session_id] => 964646916484894741
+    [post_about] => вывыв
+    [post_banner] => uploads/banners/964646916484894741_1778172605.png
+    [raw_post] => Array
+        (
+            [action] => update_profile
+            [about_me] => вывыв
+            [banner_url] => uploads/banners/964646916484894741_1778172605.png
+        )
+
+)
+UPDATED ID: 964646916484894741, Time: 13:04:33

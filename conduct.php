@@ -235,20 +235,22 @@ $questions = [
         <?php require_once 'sidebar_v2.php'; ?>
 
         <main class="main-content">
-            <header class="header glass">
-                <div style="display:flex; align-items:center; gap:1.5rem;">
-                    <a href="reattestation.php" class="btn btn-primary"
-                        style="padding: 0.4rem 0.8rem; background: rgba(255,255,255,0.05); color: #94A3B8; border: 1px solid rgba(255,255,255,0.1);">←
-                        Назад</a>
-                    <h1>Аттестация: <span style="color: #A78BFA;"><?= htmlspecialchars($targetNick) ?></span></h1>
+            <header class="header">
+                <div class="header-title">
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <a href="reattestation.php" style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:#94A3B8; text-decoration:none; font-size:1rem; transition:0.2s;" title="Назад">←</a>
+                        <div>
+                            <h1>Аттестация: <span style="color: #A78BFA;"><?= htmlspecialchars($targetNick) ?></span></h1>
+                            <p>ID: <?= htmlspecialchars($targetId) ?></p>
+                        </div>
+                    </div>
                 </div>
-                <div class="user-profile">
-                    <span
-                        style="color:#94A3B8; font-size:0.9rem; background: rgba(0,0,0,0.2); padding: 0.4rem 0.8rem; border-radius: 6px;">ID:
-                        <?= htmlspecialchars($targetId) ?></span>
+                <div class="header-actions">
+                    <a href="logout.php" class="btn-logout-premium"><i class="fas fa-sign-out-alt"></i> Выйти</a>
                 </div>
             </header>
 
+            <div class="page-body">
             <section class="content">
                 <div class="card glass" style="grid-column: 1 / -1;">
                     <div class="card-body">
@@ -291,6 +293,7 @@ $questions = [
                     </div>
                 </div>
             </section>
+            </div>
         </main>
     </div>
 

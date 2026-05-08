@@ -53,6 +53,11 @@ try {
                         <i class="fas fa-users"></i> <span>РЎРїРёСЃРѕРє СЃР°РїРїРѕСЂС‚РѕРІ</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="warnings_history.php" class="nav-link <?= $currentPage === 'warnings_history.php' ? 'active' : '' ?>">
+                        <i class="fas fa-history"></i> <span>РСЃС‚РѕСЂРёСЏ СѓСЃС‚РЅРёРєРѕРІ</span>
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -103,7 +108,7 @@ try {
             <ul class="nav-menu">
                 <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
                 <li class="nav-item">
-                    <a href="users_manage.php" onclick="window.location.href='users_manage.php'; return true;" class="nav-link <?= $currentPage === 'users_manage.php' ? 'active' : '' ?>">
+                    <a href="users_manage.php" class="nav-link <?= $currentPage === 'users_manage.php' ? 'active' : '' ?>">
                         <i class="fas fa-users-cog"></i> <span>РџРѕР»СЊР·РѕРІР°С‚РµР»Рё</span>
                         <?php if ($total_users > 0): ?>
                             <span class="badge"><?= $total_users ?></span>
@@ -145,7 +150,6 @@ try {
                 }
             });
 
-            // Закрытие при клике вне сайдбара
             document.addEventListener('click', function(e) {
                 if (window.innerWidth <= 1024 && sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuBtn) {
                     sidebar.classList.remove('open');

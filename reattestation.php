@@ -70,18 +70,17 @@ if ($role !== 'admin' && $role !== 'curator') {
     <div class="dashboard-container">
         <?php require_once 'sidebar_v2.php'; ?>
         <main class="main-content">
-            <header class="header glass">
-                <div class="header-titles">
+            <header class="header">
+                <div class="header-title">
                     <h1>Переаттестация</h1>
-                    <p style="color: #94A3B8; font-size: 0.85rem;">Управление очередью и проверка знаний</p>
+                    <p>Управление очередью и проверка знаний</p>
                 </div>
-                <div class="user-profile">
-                    <a href="logout.php" class="btn-logout-premium">
-                        <i class="fas fa-sign-out-alt"></i> Выйти
-                    </a>
+                <div class="header-actions">
+                    <a href="logout.php" class="btn-logout-premium"><i class="fas fa-sign-out-alt"></i> Выйти</a>
                 </div>
             </header>
 
+            <div class="page-body">
             <section class="content">
                 <!-- КАРТОЧКИ СТАТИСТИКИ -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
@@ -129,6 +128,7 @@ if ($role !== 'admin' && $role !== 'curator') {
                     </div>
                 </div>
             </section>
+            </div>
         </main>
     </div>
 

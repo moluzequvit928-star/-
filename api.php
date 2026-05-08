@@ -19,259 +19,9 @@ if (!$isAuthorized && $providedToken !== $apiToken) {
 }
 
 require_once 'db.php';
-
-// АВТО-ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ (Статистика)
-try {
-    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS added_supports_count INT DEFAULT 0");
-    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS reattestations_count INT DEFAULT 0");
-} catch (Exception $e) {
-}
-
-function configValue($envName, $configKey, $default = '')
-{
-    global $appConfig;
-    $env = getenv($envName);
-    if ($env !== false && trim((string) $env) !== '')
-        return trim((string) $env);
-    return trim((string) ($appConfig[$configKey] ?? $default));
-}
-
-function getGoogleSheetCsvUrl($gid)
-{
-    $sheetId = configValue('GOOGLE_SHEET_ID', 'google_sheet_id', '1w2r_C3R7kh5CDvlehOHOjd3DPnvCMBQ9SnXZnB6t754');
-    return "https://docs.google.com/spreadsheets/d/{$sheetId}/export?format=csv&gid={$gid}";
-}
-
-// УЛУЧШЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ С КЭШЕМ И ТАЙМАУТОМ
-function loadCsvRows($url)
-{
-    if (!$url)
-        return [];
-
-    $cacheDir = __DIR__ . '/cache';
-    if (!is_dir($cacheDir))
-        @mkdir($cacheDir, 0777, true);
-
-    $cacheFile = $cacheDir . '/' . md5($url) . '.csv';
-    $cacheTime = 300; // 5 минут
-
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheTime)) {
-        $csvData = file_get_contents($cacheFile);
-    } else {
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $csvData = curl_exec($ch);
-        curl_close($ch);
-
-        if ($csvData) {
-            file_put_contents($cacheFile, $csvData);
-        } elseif (file_exists($cacheFile)) {
-            $csvData = file_get_contents($cacheFile);
-        } else {
-            return [];
-        }
-    }
-
-    $rows = [];
-    $temp = fopen('php://temp', 'r+');
-    fwrite($temp, $csvData);
-    rewind($temp);
-    while (($row = fgetcsv($temp)) !== false) {
-        $rows[] = $row;
-    }
-    fclose($temp);
-    return $rows;
-}
-
-function normalizeText($text)
-{
-    $t = mb_strtolower(trim((string) $text));
-    return str_replace('_', '', $t);
-}
+require_once 'staff_functions.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
-
-// ФУНКЦИЯ ПОЛУЧЕНИЯ СОСТАВА И СТАТИСТИКИ ОДНИМ ЗАХОДОМ
-function getAllDashboardData($pdo)
-{
-    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));
-    $rows = loadCsvRows($csvUrl);
-
-    $management = [
-        'admin' => [],
-        'chief' => [],
-        'curators' => [],
-        'masters' => [],
-        'helpers' => []
-    ];
-    $supportCount = 0;
-    $totalSalary = 0;
-    $lastSeenShift = '';
-
-    // Предзагрузка пользователей
-    $userMap = [];
-    $stmtUsers = $pdo->query("SELECT username, discord_id FROM users");
-    while ($u = $stmtUsers->fetch(PDO::FETCH_ASSOC)) {
-        $userMap[str_replace('_', '', mb_strtolower(trim($u['username'])))] = $u['discord_id'];
-    }
-
-    foreach ($rows as $i => $row) {
-        // 1. Парсим состав
-        if (isset($row[20], $row[21])) {
-            $role_text = trim((string) $row[20]);
-            $nickname = trim((string) $row[21]);
-            $d_id = preg_replace('/[^0-9]/', '', (isset($row[22]) ? (string) $row[22] : ''));
-
-            if (empty($d_id)) {
-                $d_id = $userMap[str_replace('_', '', mb_strtolower($nickname))] ?? null;
-            }
-
-            $curr_shift = isset($row[19]) ? trim((string) $row[19]) : '';
-            if ($curr_shift !== '')
-                $lastSeenShift = $curr_shift;
-
-            if ($nickname !== '' && $role_text !== '' && $nickname !== 'Никнейм') {
-                $role_l = mb_strtolower($role_text);
-                if (mb_strpos($role_l, 'состав') !== false && $nickname === $role_text)
-                    continue;
-
-                $entry = ['name' => $role_text, 'nick' => $nickname, 'shift' => $lastSeenShift, 'discord_id' => $d_id];
-                if (mb_strpos($role_l, 'гл. куратор') !== false)
-                    $management['chief'][] = $entry;
-                elseif (mb_strpos($role_l, 'админ') !== false)
-                    $management['admin'][] = $entry;
-                elseif (mb_strpos($role_l, 'мастер') !== false)
-                    $management['masters'][] = $entry;
-                elseif (mb_strpos($role_l, 'помощник') !== false)
-                    $management['helpers'][] = $entry;
-                elseif (mb_strpos($role_l, 'куратор') !== false)
-                    $management['curators'][] = $entry;
-            }
-        }
-
-        // 2. Парсим статы (Кол-во и ЗП)
-        foreach ($row as $j => $cell) {
-            $norm = normalizeText($cell);
-            if (mb_strpos($norm, 'сапп') !== false && $supportCount === 0) {
-                $vB = trim((string) ($rows[$i + 1][$j] ?? ''));
-                $vR = trim((string) ($row[$j + 1] ?? ''));
-                $supportCount = is_numeric($vB) ? (int) $vB : (is_numeric($vR) ? (int) $vR : 0);
-            }
-            if ($norm === 'итог' || $norm === 'итог:') {
-                $vB = trim((string) ($rows[$i + 1][$j] ?? ''));
-                $vR = trim((string) ($row[$j + 1] ?? ''));
-                $fV = is_numeric(preg_replace('/[^0-9]/', '', $vB)) ? $vB : $vR;
-                $totalSalary = (int) preg_replace('/[^0-9]/', '', $fV);
-            }
-        }
-    }
-
-    return [
-        'management' => $management,
-        'stats' => [
-            'support_count' => $supportCount,
-            'total_salary' => number_format($totalSalary, 0, '.', ' ') . ' $'
-        ]
-    ];
-}
-
-// Очередь переаттестации
-function getReattestationQueue()
-{
-    $csvUrl = getGoogleSheetCsvUrl(configValue('REATTESTATION_GID', 'reattestation_gid', '822458528'));
-    $rows = loadCsvRows($csvUrl);
-    $queue = [];
-    foreach ($rows as $index => $row) {
-        if ($index < 5)
-            continue;
-            
-        // Очистка данных
-        $row = array_map(function($v) { return trim((string)$v); }, $row);
-            
-        $nick = $row[3] ?? '';
-        if ($nick === '' || $nick === 'Ник')
-            continue;
-            
-        $status = mb_strtolower($row[7] ?? '');
-        // Если в статусе есть "сдал", пропускаем этого человека
-        if (mb_strpos($status, 'сдал') !== false) continue;
-
-        if ($status === '' || $status === '-' || $status === '—' || $status === 'нет') {
-            $queue[] = [
-                'nickname' => $nick,
-                'id' => $row[4] ?? '',
-                'date' => $row[5] ?? '',
-                'curator' => ($row[6] ?? '') ?: 'Не назначен',
-                'attempt_count' => ($row[8] ?? '') ?: '1'
-            ];
-        }
-    }
-    return $queue;
-}
-
-// Получение свободных слотов по сменам
-function getShiftSlots()
-{
-    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));
-    $rows = loadCsvRows($csvUrl);
-
-    $shifts = [];
-    $currentShift = null;
-
-    $shiftTimes = [
-        '0' => 'Свободный график',
-        '1' => '00:00 - 02:00',
-        '2' => '02:00 - 04:00',
-        '3' => '04:00 - 06:00',
-        '4' => '06:00 - 08:00',
-        '5' => '08:00 - 10:00',
-        '6' => '10:00 - 12:00',
-        '7' => '12:00 - 14:00',
-        '8' => '14:00 - 16:00',
-        '9' => '16:00 - 18:00',
-        '10' => '18:00 - 20:00',
-        '11' => '20:00 - 22:00',
-        '12' => '22:00 - 00:00'
-    ];
-
-    foreach ($rows as $i => $row) {
-        $cell = trim($row[2] ?? '');
-        if (preg_match('/^(\d+)\s+смена/i', $cell, $matches)) {
-            $currentShift = $matches[1];
-            $shifts[$currentShift] = [
-                'id' => $currentShift,
-                'label' => $cell,
-                'time' => $shiftTimes[$currentShift] ?? '',
-                'free_slots' => 0
-            ];
-            continue;
-        }
-
-        if ($currentShift !== null) {
-            if (trim($row[1] ?? '') === 'Дата' || trim($row[2] ?? '') === 'Никнейм') continue;
-            
-            if (count($row) > 5) {
-                $nick = trim($row[2] ?? '');
-                // Проверяем, является ли строка частью таблицы смены (обычно там есть дефис или 0/2)
-                if (trim($row[4] ?? '') === '-' || trim($row[6] ?? '') === '0/2') {
-                     if ($nick === '' || $nick === '-' || $nick === '—') {
-                         $shifts[$currentShift]['free_slots']++;
-                     }
-                }
-            }
-        }
-    }
-    
-    // Сортировка: 0 в начало или в конец? На скриншоте 0 в начале.
-    ksort($shifts);
-    
-    return array_values($shifts);
-}
 
 // РОУТИНГ
 if (empty($action)) {
@@ -285,7 +35,7 @@ if (empty($action)) {
 }
 
 if ($action === 'reattestation_queue') {
-    echo json_encode(['success' => true, 'data' => getReattestationQueue()]);
+    echo json_encode(['success' => true, 'data' => getReattestationQueue($pdo)]);
     exit;
 }
 
@@ -391,10 +141,225 @@ if ($action === 'add_support') {
     exit;
 }
 
+if ($action === 'get_all_supports') {
+    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));
+    $rows = loadCsvRows($csvUrl);
+    $supports = [];
+    $activeWarnings = [];
+    $now = date('Y-m-d H:i:s');
+    $stmtW = $pdo->prepare("SELECT support_id, COUNT(*) as count FROM warnings WHERE expires_at > ? OR expires_at IS NULL GROUP BY support_id");
+    $stmtW->execute([$now]);
+    while($w = $stmtW->fetch(PDO::FETCH_ASSOC)) {
+        $activeWarnings[$w['support_id']] = $w['count'];
+    }
+
+    foreach ($rows as $index => $row) {
+        if ($index < 2) continue;
+        $date = trim($row[1] ?? '');
+        $nick = trim($row[2] ?? '');
+        $discord_id = preg_replace('/[^0-9]/', '', (string)($row[3] ?? ''));
+        
+        if ($nick !== '' && $nick !== '-' && $nick !== 'Никнейм' && mb_strpos(mb_strtolower($nick), 'смена') === false && !empty($discord_id)) {
+            $supports[] = [
+                'date' => $date,
+                'nick' => $nick,
+                'discord_id' => $discord_id,
+                'active_warnings' => $activeWarnings[$discord_id] ?? 0
+            ];
+        }
+    }
+    echo json_encode(['success' => true, 'data' => $supports]);
+    exit;
+}
+
+if ($action === 'give_warning') {
+    $support_id = $_POST['support_id'] ?? '';
+    $support_nick = $_POST['support_nick'] ?? '';
+    $reason = $_POST['reason'] ?? '';
+    $duration = $_POST['duration'] ?? '1d';
+    $admin_id = $_SESSION['discord_id'] ?? 'system';
+    $admin_nick = $_SESSION['username'] ?? 'Admin';
+
+    if (!$support_id || !$reason) {
+        echo json_encode(['success' => false, 'error' => 'Missing data']);
+        exit;
+    }
+
+    $expires_at = null;
+    if (preg_match('/^(\d+)([dhm])$/i', $duration, $matches)) {
+        $val = (int)$matches[1];
+        $unit = strtolower($matches[2]);
+        $seconds = 0;
+        if ($unit === 'd') $seconds = $val * 86400;
+        elseif ($unit === 'h') $seconds = $val * 3600;
+        elseif ($unit === 'm') $seconds = $val * 60;
+        $expires_at = date('Y-m-d H:i:s', time() + $seconds);
+    }
+
+    try {
+        $stmt = $pdo->prepare("INSERT INTO warnings (support_id, support_nickname, admin_id, admin_nickname, reason, duration, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$support_id, $support_nick, $admin_id, $admin_nick, $reason, $duration, $expires_at]);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'upload_media') {
+    $discord_id = $_SESSION['discord_id'] ?? '';
+    if (!$discord_id) {
+        echo json_encode(['success' => false, 'error' => 'Not logged in']);
+        exit;
+    }
+
+    $target = $_POST['target'] ?? 'banner'; 
+    $uploadDir = __DIR__ . ($target === 'avatar' ? '/uploads/avatars/' : '/uploads/banners/');
+    if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+
+    $finalUrl = '';
+
+    if (isset($_FILES['media_file']) && $_FILES['media_file']['error'] === UPLOAD_ERR_OK) {
+        $ext = pathinfo($_FILES['media_file']['name'], PATHINFO_EXTENSION);
+        $fileName = $discord_id . '_' . time() . '.' . $ext;
+        if (move_uploaded_file($_FILES['media_file']['tmp_name'], $uploadDir . $fileName)) {
+            $finalUrl = ($target === 'avatar' ? 'uploads/avatars/' : 'uploads/banners/') . $fileName;
+        }
+    } 
+    elseif (isset($_POST['media_base64']) && !empty($_POST['media_base64'])) {
+        $data = $_POST['media_base64'];
+        if (preg_match('/^data:image\/(\w+);base64,/', $data, $type)) {
+            $data = substr($data, strpos($data, ',') + 1);
+            $type = strtolower($type[1]);
+            $data = base64_decode($data);
+            $fileName = $discord_id . '_' . time() . '.' . $type;
+            if (file_put_contents($uploadDir . $fileName, $data)) {
+                $finalUrl = ($target === 'avatar' ? 'uploads/avatars/' : 'uploads/banners/') . $fileName;
+            }
+        }
+    }
+
+    if ($finalUrl) {
+        echo json_encode(['success' => true, 'url' => $finalUrl]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Upload failed']);
+    }
+    exit;
+}
+
+if ($action === 'update_profile') {
+    $about_me = $_POST['about_me'] ?? '';
+    $banner_url = $_POST['banner_url'] ?? '';
+    $discord_id = $_SESSION['discord_id'] ?? '';
+
+    if (!$discord_id) {
+        echo json_encode(['success' => false, 'error' => 'Сессия истекла']);
+        exit;
+    }
+
+    try {
+        $username = $_SESSION['username'] ?? 'User';
+        $role = $_SESSION['role'] ?? 'master';
+        $pdo->exec("SET NAMES utf8mb4");
+
+        $check = $pdo->prepare("SELECT id FROM users WHERE discord_id = ?");
+        $check->execute([$discord_id]);
+        $exists = $check->fetch();
+
+        if ($exists) {
+            $stmt = $pdo->prepare("UPDATE users SET about_me = ?, banner_url = ? WHERE discord_id = ?");
+            $stmt->execute([$about_me, $banner_url, $discord_id]);
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO users (discord_id, username, role, password, about_me, banner_url) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$discord_id, $username, $role, 'default123', $about_me, $banner_url]);
+        }
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'get_warnings') {
+    $support_id = $_GET['support_id'] ?? null;
+    try {
+        if ($support_id) {
+            $stmt = $pdo->prepare("SELECT * FROM warnings WHERE support_id = ? ORDER BY created_at DESC");
+            $stmt->execute([$support_id]);
+        } else {
+            $stmt = $pdo->query("SELECT * FROM warnings ORDER BY created_at DESC LIMIT 100");
+        }
+        $warnings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $now = date('Y-m-d H:i:s');
+        foreach ($warnings as &$w) {
+            $w['is_active'] = ($w['expires_at'] === null || $w['expires_at'] > $now);
+        }
+        echo json_encode(['success' => true, 'data' => $warnings]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'remove_warning') {
+    if (!in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])) {
+         echo json_encode(['success' => false, 'error' => 'Нет прав']);
+         exit;
+    }
+    $warning_id = $_POST['id'] ?? null;
+    try {
+        $stmt = $pdo->prepare("UPDATE warnings SET expires_at = NOW() WHERE id = ?");
+        $stmt->execute([$warning_id]);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($action === 'get_user_stats') {
     $stmt = $pdo->prepare("SELECT added_supports_count, reattestations_count FROM users WHERE discord_id = ?");
     $stmt->execute([$_GET['discord_id'] ?? '']);
     echo json_encode(['success' => true, 'stats' => $stmt->fetch(PDO::FETCH_ASSOC)]);
+    exit;
+}
+
+if ($action === 'master_details') {
+    $username = $_SESSION['username'] ?? '';
+    if (!$username) {
+        echo json_encode(['success' => false, 'error' => 'No username in session']);
+        exit;
+    }
+    
+    $data = getAllDashboardData($pdo);
+    $foundMaster = null;
+    
+    foreach ($data['management'] as $role => $members) {
+        foreach ($members as $m) {
+            if (mb_strtolower($m['nick']) === mb_strtolower($username)) {
+                $foundMaster = $m;
+                break 2;
+            }
+        }
+    }
+    
+    if ($foundMaster) {
+        $curator = 'Не назначен';
+        foreach ($data['management']['curators'] as $c) {
+            if ($c['shift'] === $foundMaster['shift']) {
+                $curator = $c['nick'];
+                break;
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'curator' => $curator,
+            'shift' => $foundMaster['shift']
+        ]);
+    } else {
+        echo json_encode(['success' => false, 'error' => 'Master not found in sheet']);
+    }
     exit;
 }
 
