@@ -5,3 +5,9 @@ npm-debug.log
 .DS_Store
 terminals
 agent-transcripts
+app_config.php
+bot_config.json
+users.json
+cache/
+uploads/
+db.php
