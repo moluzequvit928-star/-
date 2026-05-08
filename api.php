@@ -5,21 +5,11 @@ header('Content-Type: application/json; charset=utf-8');
 error_reporting(0);
 ini_set('display_errors', 0);
 
-$appConfig = @include __DIR__ . '/app_config.php';
-if (!is_array($appConfig))
-    $appConfig = [];
-
-$apiToken = $appConfig['bot_api_token'] ?? 'futika_bot_secret_2026';
-$providedToken = $_GET['token'] ?? $_POST['token'] ?? '';
-
-$isAuthorized = (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true);
-if (!$isAuthorized && $providedToken !== $apiToken) {
-    echo json_encode(['error' => 'Unauthorized']);
-    exit;
-}
-
 require_once 'db.php';
 require_once 'staff_functions.php';
+
+$appConfig = getAppConfig();
+$apiToken = $appConfig['bot_api_token'] ?? 'futika_bot_secret_2026';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
@@ -101,7 +91,11 @@ if ($action === 'add_support') {
         $webhook = $appConfig['app_script_webhook_url'] ?? '';
         if ($webhook) {
             $payload = ['token' => $appConfig['app_script_webhook_token'] ?? '', 'action' => 'add_support', 'nick' => $nick, 'discord_id' => $discordId, 'shift' => $shift, 'date' => $_POST['date'] ?? date('d.m.Y')];
-            $ch = curl_init($webhook);
+            
+            // Добавляем параметры в URL для совместимости с GET/POST обработкой в Apps Script
+            $webhookUrl = $webhook . (strpos($webhook, '?') === false ? '?' : '&') . 'token=' . ($appConfig['app_script_webhook_token'] ?? '') . '&action=add_support';
+            
+            $ch = curl_init($webhookUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);

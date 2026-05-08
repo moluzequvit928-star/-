@@ -7,22 +7,69 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
 require_once 'user_header.php';
 require_once 'db.php';
 
-$target_id = $_GET['id'] ?? $_SESSION['discord_id'];
-$is_my_profile = ($target_id === $_SESSION['discord_id']);
+$target_id = $_GET['id'] ?? null;
+$target_nick = $_GET['nick'] ?? null;
 
-// Используем английские названия колонок
-$stmt = $pdo->prepare("SELECT * FROM users WHERE discord_id = ?");
-$stmt->execute([$target_id]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC);
+// Если ничего не передано, показываем свой профиль
+if (!$target_id && !$target_nick) {
+    $target_id = $_SESSION['discord_id'] ?? null;
+}
 
-if (!$user && $is_my_profile) {
-    $user = [
-        'username' => $_SESSION['username'], 
-        'role' => $_SESSION['role'] ?? 'master', 
-        'discord_id' => $_SESSION['discord_id'], 
-        'about_me' => '', 
-        'banner_url' => ''
-    ];
+$is_my_profile = ($target_id && isset($_SESSION['discord_id']) && $target_id === $_SESSION['discord_id']);
+
+$user = null;
+if ($target_id) {
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE discord_id = ?");
+    $stmt->execute([$target_id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+} elseif ($target_nick) {
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+    $stmt->execute([$target_nick]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($user) {
+        $target_id = $user['discord_id'];
+    }
+}
+
+// Если пользователя нет в базе, пробуем найти его в данных из таблицы или создать временный объект
+if (!$user) {
+    $data = getAllDashboardData($pdo);
+    $foundInSheet = null;
+    $searchKey = $target_id ?: $target_nick;
+
+    foreach ($data['management'] as $role_key => $members) {
+        foreach ($members as $m) {
+            if (($target_id && $m['discord_id'] === $target_id) || 
+                ($target_nick && mb_strtolower($m['nick']) === mb_strtolower($target_nick))) {
+                $foundInSheet = $m;
+                $foundInSheet['role_key'] = $role_key;
+                break 2;
+            }
+        }
+    }
+
+    if ($foundInSheet) {
+        $user = [
+            'username' => $foundInSheet['nick'],
+            'role' => substr($foundInSheet['role_key'], 0, -1), // убираем 's' на конце (masters -> master)
+            'discord_id' => $foundInSheet['discord_id'] ?: ($target_id ?: 'system'),
+            'about_me' => 'Этот пользователь еще не заходил в систему.',
+            'banner_url' => $foundInSheet['banner'] ?? ''
+        ];
+        // Корректируем роли
+        if ($user['role'] === 'curator') {} // ok
+        elseif ($user['role'] === 'master') {} // ok
+        elseif ($user['role'] === 'admin') {} // ok
+        elseif ($foundInSheet['role_key'] === 'chief') { $user['role'] = 'chief'; }
+    } elseif ($is_my_profile) {
+        $user = [
+            'username' => $_SESSION['username'], 
+            'role' => $_SESSION['role'] ?? 'master', 
+            'discord_id' => $_SESSION['discord_id'], 
+            'about_me' => '', 
+            'banner_url' => ''
+        ];
+    }
 }
 
 $u_name = $user['username'] ?? 'Неизвестно';

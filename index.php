@@ -150,7 +150,7 @@ require_once 'user_header.php';
                                         <div style="font-size: 0.9rem; color: var(--text-secondary); font-family: monospace; opacity: 0.8;">${member.discord_id || 'ID не указан'}</div>
                                         <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
                                             ${member.shift ? `<div class="staff-tag">${member.shift}</div>` : ''}
-                                            ${member.discord_id ? `<a href="profile.php?id=${member.discord_id}" class="profile-mini-btn">Профиль</a>` : ''}
+                                            <a href="profile.php?${member.discord_id ? `id=${member.discord_id}` : `nick=${encodeURIComponent(member.nick)}`}" class="profile-mini-btn">Профиль</a>
                                         </div>
                                     </div>
                                 </div>
