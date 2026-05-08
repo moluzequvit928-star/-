@@ -7,7 +7,7 @@ app_config.php
 bot_config.json
 .env
 users.json
-db.php
+# Папки зависимостей
 
 # Папки зависимостей
 node_modules/
