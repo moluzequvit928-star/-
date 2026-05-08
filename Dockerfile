@@ -2,11 +2,12 @@ FROM php:8.2-apache
 
 RUN apt-get update && apt-get install -y \
     libzip-dev \
+    libonig-dev \
     curl \
     gnupg \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
-    && docker-php-ext-install pdo pdo_mysql \
+    && docker-php-ext-install pdo pdo_mysql mbstring \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* \
