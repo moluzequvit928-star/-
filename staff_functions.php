@@ -245,7 +245,11 @@ function getShiftSlots()
 }
 
 function getAppConfig() {
-    $appConfig = @include __DIR__ . '/app_config.php';
+    $file = __DIR__ . '/app_config.php';
+    if (!file_exists($file)) {
+        return [];
+    }
+    $appConfig = include $file;
     return is_array($appConfig) ? $appConfig : [];
 }
 

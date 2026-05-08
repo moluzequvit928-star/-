@@ -48,10 +48,11 @@ if ($action === 'set_reattestation_result') {
         $stmt = $pdo->prepare("INSERT INTO reattestations (discord_id, discord_nickname, curator, result) VALUES (?, ?, ?, ?)");
         $stmt->execute([$discordId, $nickname, $curator, $result]);
 
-        $webhook = $appConfig['app_script_webhook_url'] ?? '';
+        $webhook = configValue('APP_SCRIPT_WEBHOOK_URL', 'app_script_webhook_url');
         if ($webhook) {
-            $payload = ['token' => $appConfig['app_script_webhook_token'] ?? '', 'action' => 'update_reattestation', 'discord_id' => $discordId, 'result' => $result, 'curator' => $curator];
-            $webhookUrl = $webhook . (strpos($webhook, '?') === false ? '?' : '&') . 'token=' . ($appConfig['app_script_webhook_token'] ?? '') . '&action=' . $action;
+            $webhookToken = configValue('APP_SCRIPT_WEBHOOK_TOKEN', 'app_script_webhook_token');
+            $payload = ['token' => $webhookToken, 'action' => 'update_reattestation', 'discord_id' => $discordId, 'result' => $result, 'curator' => $curator];
+            $webhookUrl = $webhook . (strpos($webhook, '?') === false ? '?' : '&') . 'token=' . $webhookToken . '&action=' . $action;
             $ch = curl_init($webhookUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
@@ -88,12 +89,13 @@ if ($action === 'add_support') {
         if (!$nick || !$discordId || $shift === '')
             throw new Exception("Error");
 
-        $webhook = $appConfig['app_script_webhook_url'] ?? '';
+        $webhook = configValue('APP_SCRIPT_WEBHOOK_URL', 'app_script_webhook_url');
         if ($webhook) {
-            $payload = ['token' => $appConfig['app_script_webhook_token'] ?? '', 'action' => 'add_support', 'nick' => $nick, 'discord_id' => $discordId, 'shift' => $shift, 'date' => $_POST['date'] ?? date('d.m.Y')];
+            $webhookToken = configValue('APP_SCRIPT_WEBHOOK_TOKEN', 'app_script_webhook_token');
+            $payload = ['token' => $webhookToken, 'action' => 'add_support', 'nick' => $nick, 'discord_id' => $discordId, 'shift' => $shift, 'date' => $_POST['date'] ?? date('d.m.Y')];
             
             // Добавляем параметры в URL для совместимости с GET/POST обработкой в Apps Script
-            $webhookUrl = $webhook . (strpos($webhook, '?') === false ? '?' : '&') . 'token=' . ($appConfig['app_script_webhook_token'] ?? '') . '&action=add_support';
+            $webhookUrl = $webhook . (strpos($webhook, '?') === false ? '?' : '&') . 'token=' . $webhookToken . '&action=add_support';
             
             $ch = curl_init($webhookUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -126,7 +128,8 @@ if ($action === 'add_support') {
                 }
             }
         } else {
-            throw new Exception("Webhook URL is not configured in app_config.php");
+            $keys = is_array($appConfig) ? implode(', ', array_keys($appConfig)) : 'not an array';
+            throw new Exception("Webhook URL is not configured in app_config.php. Dir: " . __DIR__ . ". Keys found: [$keys]");
         }
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
