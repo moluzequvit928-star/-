@@ -65,6 +65,7 @@ require_once 'user_header.php';
 
         .status-active { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
         .status-expired { background: rgba(100, 116, 139, 0.1); color: #64748b; }
+        .status-justified { background: rgba(16, 185, 129, 0.1); color: #10b981; }
     </style>
 </head>
 
@@ -132,8 +133,8 @@ require_once 'user_header.php';
                             <td style="color: #fff; font-weight: 500;">${w.duration}</td>
                             <td style="color: var(--text-secondary); font-size: 0.9rem;">${w.admin_nickname}</td>
                             <td>
-                                <span class="status-badge ${w.is_active ? 'status-active' : 'status-expired'}">
-                                    ${w.is_active ? 'Активен' : 'Истек'}
+                                <span class="status-badge ${w.is_active ? 'status-active' : (w.removed_by_nickname ? 'status-justified' : 'status-expired')}">
+                                    ${w.is_active ? 'Активен' : (w.removed_by_nickname ? 'Оправдан (' + w.removed_by_nickname + ')' : 'Истек')}
                                 </span>
                             </td>
                             <td style="color: var(--text-secondary); font-size: 0.85rem;">${new Date(w.created_at).toLocaleDateString('ru-RU')}</td>

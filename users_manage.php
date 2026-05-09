@@ -23,8 +23,8 @@ $messageType = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    // Только АДМИН может добавлять, удалять или банить
-    if ($current_role !== 'admin') {
+    // Только АДМИН и ГЛ. КУРАТОР может добавлять, удалять или банить
+    if ($current_role !== 'admin' && $current_role !== 'chief') {
         $message = 'Ошибка: У вас недостаточно прав для этого действия!';
         $messageType = 'error';
     } else {
@@ -183,7 +183,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <h1>Управление кадрами</h1>
                 </div>
                 <div class="header-actions">
-                    <?php if ($current_role === 'admin'): ?>
+                    <?php if ($current_role === 'admin' || $current_role === 'chief'): ?>
                         <button style="background: var(--accent); border: none; color: #fff; padding: 0.6rem 1.2rem; border-radius: 10px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem;" onclick="openAddModal()">
                             <i class="fas fa-plus"></i> Добавить
                         </button>
@@ -259,7 +259,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </td>
                                     <td style="text-align: right;">
                                         <?php 
-                                        $canManage = ($current_role === 'admin');
+                                        $canManage = ($current_role === 'admin' || $current_role === 'chief');
                                         $isProtected = ($u['username'] === 'admin' || $u['username'] === $_SESSION['username']);
                                         
                                         if ($canManage && !$isProtected): 

@@ -98,7 +98,8 @@ async function resolvePanelRoleFromDiscord(interaction) {
     const roleNames = roleIds.map((id) => guild.roles.cache.get(id)?.name).filter(Boolean).map((name) => normalizeRoleName(name));
 
     if (hasAnyRole(roleNames, ['админ', 'администратор', 'admin', 'administrator'])) return 'admin';
-    if (hasAnyRole(roleNames, ['главный куратор', 'гл. куратор', 'куратор', 'curator', 'chief curator'])) return 'curator';
+    if (hasAnyRole(roleNames, ['глк', 'главный куратор', 'гл. куратор', 'chief curator', 'chief'])) return 'chief';
+    if (hasAnyRole(roleNames, ['куратор', 'curator'])) return 'curator';
     if (hasAnyRole(roleNames, ['мастер', 'master'])) return 'master';
     
     return null; // Нет подходящих ролей
@@ -185,7 +186,7 @@ client.on('interactionCreate', async interaction => {
 
             if (!panelRole) {
                 return await interaction.editReply({
-                    content: '❌ **Доступ запрещен!**\nУ вас нет необходимых ролей персонала (Мастер, Куратор или Администратор) на этом сервере.'
+                    content: '❌ **Доступ запрещен!**\nУ вас нет необходимых ролей персонала (Мастер, Куратор, Гл. Куратор или Администратор) на этом сервере.'
                 });
             }
 
@@ -246,12 +247,14 @@ client.on('interactionCreate', async interaction => {
 
             const roleColors = {
                 'admin': 0xFF5555,
+                'chief': 0x8B5CF6,
                 'curator': 0x55FF55,
                 'master': 0x5555FF
             };
 
             const roleNames = {
                 'admin': 'Администратор',
+                'chief': 'Главный куратор',
                 'curator': 'Куратор',
                 'master': 'Мастер'
             };

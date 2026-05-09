@@ -113,7 +113,7 @@ function getAllDashboardData($pdo)
             if ($nickname !== '' && $role_text !== '' && $nickname !== 'Никнейм') {
                 $role_l = mb_strtolower($role_text);
                 $entry = ['name' => $role_text, 'nick' => $nickname, 'shift' => $lastSeenShift, 'discord_id' => $d_id, 'banner' => $banner_url];
-                if (mb_strpos($role_l, 'гл. куратор') !== false) $management['chief'][] = $entry;
+                if (mb_strpos($role_l, 'гл. куратор') !== false || mb_strpos($role_l, 'глк') !== false) $management['chief'][] = $entry;
                 elseif (mb_strpos($role_l, 'админ') !== false) $management['admin'][] = $entry;
                 elseif (mb_strpos($role_l, 'куратор') !== false) $management['curators'][] = $entry;
                 elseif (mb_strpos($role_l, 'мастер') !== false) $management['masters'][] = $entry;

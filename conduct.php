@@ -8,6 +8,12 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
 }
 require_once 'user_header.php';
 
+$role = $_SESSION['role'] ?? 'master';
+if ($role !== 'admin' && $role !== 'chief' && $role !== 'curator') {
+    header('Location: index.php');
+    exit;
+}
+
 $targetId = $_GET['id'] ?? '';
 $targetNick = $_GET['nick'] ?? 'Неизвестно';
 $curator = $_GET['curator'] ?? ($_SESSION['username'] ?? '');

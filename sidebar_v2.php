@@ -75,7 +75,7 @@ try {
                         <i class="fas fa-archive"></i> <span>Архив</span>
                     </a>
                 </li>
-                <?php if (($_SESSION['role'] ?? 'master') === 'admin'): ?>
+                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief'])): ?>
                 <li class="nav-item">
                     <a href="fortune_wheel.php" class="nav-link <?= $currentPage === 'fortune_wheel.php' ? 'active' : '' ?>">
                         <i class="fas fa-dharmachakra"></i> <span>Колесо фортуны</span>

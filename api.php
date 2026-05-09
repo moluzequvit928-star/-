@@ -170,6 +170,10 @@ if ($action === 'get_all_supports') {
 }
 
 if ($action === 'give_warning') {
+    if (!in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])) {
+        echo json_encode(['success' => false, 'error' => 'Нет прав']);
+        exit;
+    }
     $support_id = $_POST['support_id'] ?? '';
     $support_nick = $_POST['support_nick'] ?? '';
     $reason = $_POST['reason'] ?? '';
@@ -304,9 +308,10 @@ if ($action === 'remove_warning') {
          exit;
     }
     $warning_id = $_POST['id'] ?? null;
+    $remover_nick = $_SESSION['username'] ?? 'System';
     try {
-        $stmt = $pdo->prepare("UPDATE warnings SET expires_at = NOW() WHERE id = ?");
-        $stmt->execute([$warning_id]);
+        $stmt = $pdo->prepare("UPDATE warnings SET expires_at = NOW(), removed_by_nickname = ? WHERE id = ?");
+        $stmt->execute([$remover_nick, $warning_id]);
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);

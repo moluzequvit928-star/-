@@ -7,8 +7,9 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
     exit;
 }
 
-// Проверка роли (только админ)
-if (($_SESSION['role'] ?? 'master') !== 'admin') {
+// Проверка роли (админ или гл. куратор)
+$u_role = $_SESSION['role'] ?? 'master';
+if ($u_role !== 'admin' && $u_role !== 'chief') {
     header('Location: index.php');
     exit;
 }

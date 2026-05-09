@@ -12,7 +12,7 @@ $curator = $_SESSION['username'] ?? '';
 $role = $_SESSION['role'] ?? 'master';
 
 // Обычным мастерам здесь делать нечего
-if ($role === 'master') {
+if ($role !== 'admin' && $role !== 'chief' && $role !== 'curator') {
     header('Location: index.php');
     exit;
 }
@@ -42,8 +42,8 @@ try {
     // Если что-то не так
 }
 
-// Теперь делаем запрос: Только АДМИН видит всё. Остальные (включая Гл. Куратора) - только своё.
-if ($role === 'admin') {
+// Теперь делаем запрос: АДМИН и ГЛ. КУРАТОР видят всё. Остальные - только своё.
+if ($role === 'admin' || $role === 'chief') {
     $stmt = $pdo->prepare("SELECT * FROM reattestations ORDER BY created_at DESC");
     $stmt->execute();
 } else {

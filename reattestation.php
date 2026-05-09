@@ -9,7 +9,8 @@ $username = $_SESSION['username'] ?? 'Гость';
 $role = $_SESSION['role'] ?? 'master';
 $avatar_url = $_SESSION['avatar_url'] ?? 'https://cdn.discordapp.com/embed/avatars/0.png';
 
-if ($role !== 'admin' && $role !== 'curator') {
+// Проверка роли (админ, гл. куратор или куратор)
+if ($role !== 'admin' && $role !== 'chief' && $role !== 'curator') {
     header('Location: index.php');
     exit;
 }
@@ -155,7 +156,8 @@ if ($role !== 'admin' && $role !== 'curator') {
                     if (res.success) {
                         // ФИЛЬТРАЦИЯ: Админ видит всех, кураторы - только своих
                         let filteredData = res.data;
-                        if (userRole !== 'admin') {
+                        // ФИЛЬТРАЦИЯ: Админ и Гл. куратор видят всех, кураторы - только своих
+                        if (userRole !== 'admin' && userRole !== 'chief') {
                             filteredData = res.data.filter(item => {
                                 return normalize(item.curator) === userNameNormalized;
                             });

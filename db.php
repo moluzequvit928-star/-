@@ -70,6 +70,8 @@ try {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
 
+    try { $pdo->exec("ALTER TABLE warnings ADD COLUMN removed_by_nickname VARCHAR(100) DEFAULT NULL"); } catch (Exception $e) {}
+
     // Таблица архива переаттестаций
     $pdo->exec("CREATE TABLE IF NOT EXISTS reattestations (
         id INT AUTO_INCREMENT PRIMARY KEY,
