@@ -105,6 +105,6 @@ if ($return_var === 0) {
         // Ошибки логируем в файл, чтобы не ломать JSON
         file_put_contents('debug_sync_error.txt', $e->getMessage(), FILE_APPEND);
     }
-} else {
-    echo json_encode(['success' => false, 'error' => 'Ошибка при запуске скрипта сверки', 'debug' => $output]);
+    $debug_info = implode("\n", $output);
+    echo json_encode(['success' => false, 'error' => 'Ошибка при запуске скрипта сверки', 'debug' => $debug_info]);
 }
