@@ -236,7 +236,9 @@ require_once 'user_header.php';
                                 }
                             } catch (e) {
                                 clearInterval(interval);
-                                alert('Произошла критическая ошибка при запросе');
+                                console.error(e);
+                                // Попробуем прочитать текст ошибки, если запрос вообще прошел
+                                alert('Произошла критическая ошибка при запросе. Проверьте консоль браузера или логи Railway.');
                                 btn.disabled = false;
                             }
                         });
