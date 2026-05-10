@@ -24,6 +24,11 @@ $return_var = 0;
 
 exec($command, $output, $return_var);
 
+// Логируем в системный журнал Railway для отладки
+error_log("Sync command: " . $command);
+error_log("Return var: " . $return_var);
+error_log("Output: " . implode("\n", $output));
+
 if ($return_var === 0) {
     // Парсим вывод консоли
     $raw_output = implode("\n", $output);

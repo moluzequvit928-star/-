@@ -1,0 +1,9 @@
+# Инструкция для Railway: установить PHP и Node.js
+[phases.setup]
+nixPkgs = ["php", "nodejs", "git"]
+
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["composer install || echo 'No composer.json'"]
