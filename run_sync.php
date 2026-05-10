@@ -12,8 +12,13 @@ if (!isset($_SESSION['user_logged_in']) || !in_array($_SESSION['role'], $allowed
     exit;
 }
 
-// Команда для запуска скрипта (используем cmd /c для обхода ограничений)
-$command = 'cmd /c "node check_sync.js"';
+// Команда для запуска скрипта (авто-определение ОС)
+if (PHP_OS_FAMILY === 'Windows') {
+    $command = 'cmd /c "node check_sync.js"';
+} else {
+    $command = 'node check_sync.js 2>&1'; // 2>&1 перенаправляет ошибки в основной поток для отладки
+}
+
 $output = [];
 $return_var = 0;
 
