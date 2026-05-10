@@ -5,8 +5,8 @@ header('Content-Type: application/json');
 // Увеличиваем время выполнения до 5 минут
 set_time_limit(300);
 
-// Проверка прав (только админы и гл. кураторы могут делать сверку)
-$allowed_roles = ['admin', 'chief'];
+// Проверка прав (админ, гл. куратор, куратор)
+$allowed_roles = ['admin', 'chief', 'curator'];
 if (!isset($_SESSION['user_logged_in']) || !in_array($_SESSION['role'], $allowed_roles)) {
     echo json_encode(['success' => false, 'error' => 'Доступ запрещен']);
     exit;
@@ -77,22 +77,23 @@ if ($return_var === 0) {
             // 4. Если есть изменения, записываем их в статистику (по дням)
             // Мы записываем общее кол-во изменений за этот запуск
             // В идеале можно группировать по дате, но для графика лучше каждая точка - запуск или день
+            // 5. Обновляем таблицу текущего состава
+            // Если таблица была пуста - это первый запуск, запишем его в статистику как 0 изменений, но с верным итогом
+            $is_first_run = (count($last_ids) === 0);
+            
             $stmt = $pdo->prepare("INSERT INTO sync_stats (added_count, removed_count, sheet_total, discord_total) VALUES (?, ?, ?, ?)");
             $stmt->execute([
-                $added_count,
-                $removed_count,
+                $is_first_run ? 0 : $added_count, 
+                $is_first_run ? 0 : $removed_count,
                 $results['sheet_count'],
                 $results['discord_count']
             ]);
-            
-            // 5. Обновляем таблицу текущего состава
-            if ($added_count > 0 || $removed_count > 0) {
-                // Очищаем и записываем новый состав (или точечно, но проще обновить всё если их немного)
-                $pdo->exec("DELETE FROM supports_current");
-                $ins = $pdo->prepare("INSERT INTO supports_current (discord_id) VALUES (?)");
-                foreach ($current_ids as $cid) {
-                    $ins->execute([$cid]);
-                }
+
+            // Обновляем список ID
+            $pdo->exec("DELETE FROM supports_current");
+            $ins = $pdo->prepare("INSERT INTO supports_current (discord_id) VALUES (?)");
+            foreach ($current_ids as $cid) {
+                $ins->execute([$cid]);
             }
         }
     } catch (Exception $e) {

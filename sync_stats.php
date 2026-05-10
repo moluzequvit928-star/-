@@ -2,8 +2,27 @@
 session_start();
 require_once 'db.php';
 
-// Авто-очистка битых записей (с нулями), которые могли попасть до фикса
-$pdo->exec("DELETE FROM sync_stats WHERE discord_total = 0");
+// Принудительное создание таблиц, если их нет (особенно важно для Railway)
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sync_stats (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        added_count INT DEFAULT 0,
+        removed_count INT DEFAULT 0,
+        sheet_total INT DEFAULT 0,
+        discord_total INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS supports_current (
+        discord_id VARCHAR(50) PRIMARY KEY,
+        username VARCHAR(100) DEFAULT NULL,
+        last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+    
+    // Очистка от битых записей (в блоке try, чтобы не ронять страницу)
+    $pdo->exec("DELETE FROM sync_stats WHERE discord_total = 0");
+} catch (Exception $e) {
+    // Если таблицы еще нет или ошибка прав - просто идем дальше
+}
 
 if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true) {
     header('Location: login.php');
@@ -207,11 +226,24 @@ $current_count = $stmt_current->fetchColumn() ?: 0;
                     </div>
 
                     <div class="chart-card">
-                        <h3 style="margin-bottom: 1.5rem; font-family: 'Outfit', sans-serif;">Динамика состава</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h3 style="font-family: 'Outfit', sans-serif; margin: 0;">Динамика состава</h3>
+                            <!-- Кастомная легенда в HTML (будет видна всегда) -->
+                            <div style="display: flex; gap: 15px; font-size: 0.85rem; font-weight: 600;">
+                                <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #10B981;"></span> Поднялся</div>
+                                <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #EF4444;"></span> Снялся</div>
+                                <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #6366F1;"></span> Без изменений</div>
+                                <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 12px; border-radius: 3px; background: #A78BFA;"></span> Общий состав</div>
+                            </div>
+                        </div>
                         <div style="height: 450px;">
                             <canvas id="dynamicChart"></canvas>
                         </div>
                     </div>
+                    
+                    <p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; opacity: 0.5;">
+                        Всего записей в истории: <?= $pdo->query("SELECT COUNT(*) FROM sync_stats")->fetchColumn() ?>
+                    </p>
 
                 </div>
             </div>

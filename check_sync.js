@@ -153,4 +153,4 @@ client.on('ready', async () => {
     process.exit(0);
 });
 
-client.login(process.env.TOKEN);
+client.login(process.env.Self_bot);

@@ -82,6 +82,23 @@ try {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // Таблица статистики синхронизации
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sync_stats (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        added_count INT DEFAULT 0,
+        removed_count INT DEFAULT 0,
+        sheet_total INT DEFAULT 0,
+        discord_total INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    // Таблица текущего состава в Discord (для авто-отслеживания)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS supports_current (
+        discord_id VARCHAR(50) PRIMARY KEY,
+        username VARCHAR(100) DEFAULT NULL,
+        last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+
     // Синхронизация из users.json (Источник данных для бота)
     $users_json = __DIR__ . '/users.json';
     if (file_exists($users_json)) {
