@@ -75,27 +75,34 @@ client.on('ready', async () => {
     try {
         console.log('🔍 Получаю данные участников...');
         
-        // На селфботах лучше грузить пачками по 50
         const allRelevantIds = Array.from(new Set([...mandatoryIds, ...ignoredIds]));
         const sheetMembers = new Map();
 
-        // Постепенно наполняем кэш и собираем участников
-        for (let i = 0; i < allRelevantIds.length; i += 50) {
-            const chunk = allRelevantIds.slice(i, i + 50);
-            try {
-                const fetched = await guild.members.fetch({ user: chunk, force: true });
-                fetched.forEach(m => sheetMembers.set(m.id, m));
-            } catch (e) {}
-            process.stdout.write(`\r   Прогресс: ${Math.round((i / allRelevantIds.length) * 100)}%   `);
+        // Оптимизация: Запускаем запросы параллельно пачками
+        const chunkSize = 50;
+        const promises = [];
+        for (let i = 0; i < allRelevantIds.length; i += chunkSize) {
+            const chunk = allRelevantIds.slice(i, i + chunkSize);
+            promises.push(
+                guild.members.fetch({ user: chunk, withPresences: false }).catch(e => {
+                    console.error(`Ошибка при загрузке пачки: ${e.message}`);
+                    return new Map();
+                })
+            );
         }
-        console.log('\n✅ Данные участников получены.');
 
-        // Получаем всех с ролью (используем кэш + fetch по роли)
+        const results = await Promise.all(promises);
+        results.forEach(fetchedMap => {
+            fetchedMap.forEach(m => sheetMembers.set(m.id, m));
+        });
+
+        console.log('✅ Данные участников получены.');
+
+        // Получаем всех с ролью (быстро, без статусов)
         let membersWithRole = new Map();
         try {
-            membersWithRole = await guild.members.fetch({ role: ROLE_ID, force: true });
+            membersWithRole = await guild.members.fetch({ role: ROLE_ID, withPresences: false });
         } catch (e) {
-            // Если fetch по роли упал, фильтруем то что есть в кэше
             membersWithRole = guild.members.cache.filter(m => m.roles.cache.has(ROLE_ID));
         }
 

@@ -2,8 +2,8 @@
 session_start();
 header('Content-Type: application/json');
 
-// Увеличиваем время выполнения до 5 минут
-set_time_limit(300);
+// Увеличиваем время выполнения до 10 минут
+set_time_limit(600);
 
 // Проверка прав (админ, гл. куратор, куратор)
 $allowed_roles = ['admin', 'chief', 'curator'];
