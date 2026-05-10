@@ -75,7 +75,7 @@ try {
                         <i class="fas fa-archive"></i> <span>Архив</span>
                     </a>
                 </li>
-                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief'])): ?>
+                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
                 <li class="nav-item">
                     <a href="fortune_wheel.php" class="nav-link <?= $currentPage === 'fortune_wheel.php' ? 'active' : '' ?>">
                         <i class="fas fa-dharmachakra"></i> <span>Колесо фортуны</span>
@@ -96,10 +96,17 @@ try {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="https://docs.google.com/document/d/1tef_iQ0GuuIVgQRI15Ql8H74BFPjEcI9Cg3qZCQrtL8/edit?tab=t.0" target="_blank" class="nav-link">
-                        <i class="fas fa-user-plus"></i> <span>Собеседование</span>
+                    <a href="sync.php" class="nav-link <?= $currentPage === 'sync.php' ? 'active' : '' ?>">
+                        <i class="fas fa-sync-alt"></i> <span>Сверка таблиц</span>
                     </a>
                 </li>
+                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
+                <li class="nav-item">
+                    <a href="sync_stats.php" class="nav-link <?= $currentPage === 'sync_stats.php' ? 'active' : '' ?>">
+                        <i class="fas fa-chart-line"></i> <span>Статистика</span>
+                    </a>
+                </li>
+                <?php endif; ?>
             </ul>
         </div>
 
