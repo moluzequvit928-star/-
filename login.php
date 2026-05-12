@@ -16,7 +16,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 
-    if ($user && $password === $user['password']) { // В продакшене используйте password_verify
+    // Синхронизация с users.json (фикс для бота)
+    $users_json = __DIR__ . '/users.json';
+    if (file_exists($users_json)) {
+        $users_data = json_decode(file_get_contents($users_json), true);
+        if (isset($users_data[$username])) {
+            $udata = $users_data[$username];
+            $json_pass = (string)($udata['password'] ?? '');
+            
+            if (!$user) {
+                // Если пользователя нет в БД — создаем
+                $stmtIns = $pdo->prepare("INSERT INTO users (username, password, discord_id, role) VALUES (?, ?, ?, ?)");
+                $stmtIns->execute([
+                    $username,
+                    $json_pass,
+                    (string)($udata['discord_id'] ?? 'system'),
+                    (string)($udata['role'] ?? 'master')
+                ]);
+            } elseif ($user['password'] !== $json_pass && !empty($json_pass)) {
+                // Если пароль в JSON новее — обновляем в БД
+                $stmtUpd = $pdo->prepare("UPDATE users SET password = ?, role = ? WHERE username = ?");
+                $stmtUpd->execute([$json_pass, (string)($udata['role'] ?? $user['role']), $username]);
+            }
+            
+            // Перезагружаем данные пользователя после синхронизации
+            $stmt->execute([$username]);
+            $user = $stmt->fetch();
+        }
+    }
+
+    if ($user && $password === $user['password']) {
         $_SESSION['user_logged_in'] = true;
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
