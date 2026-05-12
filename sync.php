@@ -4,6 +4,14 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
     header('Location: login.php');
     exit;
 }
+
+// Проверка прав (только админы, гл. кураторы и кураторы)
+$allowed_roles = ['admin', 'chief', 'curator'];
+if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], $allowed_roles)) {
+    header('Location: index.php');
+    exit;
+}
+
 require_once 'user_header.php';
 ?>
 <!DOCTYPE html>
@@ -30,13 +38,6 @@ require_once 'user_header.php';
             position: relative;
             overflow: hidden;
         }
-        <?php
-        // Проверка прав (только админы, гл. кураторы и кураторы)
-        $allowed_roles = ['admin', 'chief', 'curator'];
-        if (!in_array($_SESSION['role'], $allowed_roles)) {
-            die("У вас нет прав для выполнения сверки.");
-        }
-        ?>
         .sync-hero::before {
             content: '';
             position: absolute;

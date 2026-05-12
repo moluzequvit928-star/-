@@ -5,18 +5,22 @@ require_once 'db.php';
 $discord_id = $_SESSION['discord_id'] ?? null;
 $username = $_SESSION['username'] ?? 'Гость';
 
-// Если роль не сохранена в сессии — подгружаем из users.json (фикс для старых сессий)
-if (!isset($_SESSION['role']) && $username !== 'Гость') {
-    $users_file = __DIR__ . '/users.json';
-    if (file_exists($users_file)) {
-        $all_users = json_decode(file_get_contents($users_file), true);
-        if (isset($all_users[$username]['role'])) {
-            $_SESSION['role'] = $all_users[$username]['role'];
-        } else {
-            $_SESSION['role'] = ($username === 'admin') ? 'admin' : 'master';
+// Получаем актуальные данные пользователя из БД при каждой загрузке
+if ($username !== 'Гость') {
+    try {
+        $stmtUser = $pdo->prepare("SELECT role, discord_id FROM users WHERE username = ?");
+        $stmtUser->execute([$username]);
+        $dbUser = $stmtUser->fetch(PDO::FETCH_ASSOC);
+        
+        if ($dbUser) {
+            $_SESSION['role'] = $dbUser['role'];
+            if (empty($_SESSION['discord_id'])) {
+                $_SESSION['discord_id'] = $dbUser['discord_id'];
+            }
         }
-    }
+    } catch (Exception $e) {}
 }
+
 $current_role = $_SESSION['role'] ?? 'master';
 $avatar_url = $_SESSION['avatar_url'] ?? 'https://cdn.discordapp.com/embed/avatars/0.png';
 

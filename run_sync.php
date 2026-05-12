@@ -29,87 +29,89 @@ error_log("Sync command: " . $command);
 error_log("Return var: " . $return_var);
 error_log("Output: " . implode("\n", $output));
 
-if ($return_var === 0) {
-    // Парсим вывод консоли
-    $raw_output = implode("\n", $output);
-    
-    $results = [
-        'success' => true,
-        'raw' => $raw_output,
-        'sheet_count' => 0,
-        'discord_count' => 0,
-        'extra' => [],
-        'missing' => []
-    ];
-
-    // Извлекаем цифры
-    if (preg_match('/В таблице:.*?(\d+)/u', $raw_output, $matches)) $results['sheet_count'] = (int)$matches[1];
-    if (preg_match('/В Discord:.*?(\d+)/u', $raw_output, $matches)) $results['discord_count'] = (int)$matches[1];
-
-    // Извлекаем списки (ищем блоки после заголовков)
-    $sections = preg_split('/[🔴🟡]/u', $raw_output);
-    
-    // Лишние (Discord)
-    if (strpos($raw_output, '🔴') !== false) {
-        $extra_block = explode("\n\n", explode('🔴', $raw_output)[1])[0];
-        preg_match_all('/ > (.*)/', $extra_block, $matches);
-        $results['extra'] = $matches[1] ?? [];
-    }
-
-    // Отсутствуют (Таблица)
-    if (strpos($raw_output, '🟡') !== false) {
-        $missing_block = explode("\n\n", explode('🟡', $raw_output)[1])[0];
-        preg_match_all('/ > (.*)/', $missing_block, $matches);
-        $results['missing'] = $matches[1] ?? [];
-    }
-
-    echo json_encode($results);
-
-    // --- АВТО-ТРЕКИНГ ИЗМЕНЕНИЙ (СНЯТЫ/ДОБАВЛЕНЫ) ---
-    try {
-        require_once 'db.php';
+    if ($return_var === 0) {
+        // Парсим вывод консоли
+        $raw_output = implode("\n", $output);
         
-        // 1. Извлекаем список текущих ID из вывода селфбота
-        if (preg_match('/---CURRENT_DISCORD_IDS---\n(.*?)\n---END_CURRENT_DISCORD_IDS---/s', $raw_output, $matches)) {
-            $current_ids = array_filter(explode(',', trim($matches[1])));
-            
-            // 2. Получаем список ID, которые были в прошлый раз
-            $stmt = $pdo->query("SELECT discord_id FROM supports_current");
-            $last_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            
-            // 3. Вычисляем разницу
-            $added_ids = array_diff($current_ids, $last_ids);   // Есть сейчас, не было раньше
-            $removed_ids = array_diff($last_ids, $current_ids); // Были раньше, нет сейчас
-            
-            $added_count = count($added_ids);
-            $removed_count = count($removed_ids);
-            
-            // 4. Если есть изменения, записываем их в статистику (по дням)
-            // Мы записываем общее кол-во изменений за этот запуск
-            // В идеале можно группировать по дате, но для графика лучше каждая точка - запуск или день
-            // 5. Обновляем таблицу текущего состава
-            // Если таблица была пуста - это первый запуск, запишем его в статистику как 0 изменений, но с верным итогом
-            $is_first_run = (count($last_ids) === 0);
-            
-            $stmt = $pdo->prepare("INSERT INTO sync_stats (added_count, removed_count, sheet_total, discord_total) VALUES (?, ?, ?, ?)");
-            $stmt->execute([
-                $is_first_run ? 0 : $added_count, 
-                $is_first_run ? 0 : $removed_count,
-                $results['sheet_count'],
-                $results['discord_count']
-            ]);
+        $results = [
+            'success' => true,
+            'raw' => $raw_output,
+            'sheet_count' => 0,
+            'discord_count' => 0,
+            'extra' => [],
+            'missing' => []
+        ];
 
-            // Обновляем список ID
-            $pdo->exec("DELETE FROM supports_current");
-            $ins = $pdo->prepare("INSERT INTO supports_current (discord_id) VALUES (?)");
-            foreach ($current_ids as $cid) {
-                $ins->execute([$cid]);
+        // Извлекаем цифры
+        if (preg_match('/В таблице:.*?(\d+)/u', $raw_output, $matches)) $results['sheet_count'] = (int)$matches[1];
+        if (preg_match('/В Discord:.*?(\d+)/u', $raw_output, $matches)) $results['discord_count'] = (int)$matches[1];
+
+        // Извлекаем списки (ищем блоки после заголовков)
+        // Лишние (Discord)
+        if (strpos($raw_output, '🔴') !== false) {
+            $parts = explode('🔴', $raw_output);
+            if (isset($parts[1])) {
+                $extra_block = explode("\n\n", $parts[1])[0];
+                preg_match_all('/ > (.*)/', $extra_block, $matches);
+                $results['extra'] = $matches[1] ?? [];
             }
         }
-    } catch (Exception $e) {
-        // Ошибки логируем в файл, чтобы не ломать JSON
-        file_put_contents('debug_sync_error.txt', $e->getMessage(), FILE_APPEND);
+
+        // Отсутствуют (Таблица)
+        if (strpos($raw_output, '🟡') !== false) {
+            $parts = explode('🟡', $raw_output);
+            if (isset($parts[1])) {
+                $missing_block = explode("\n\n", $parts[1])[0];
+                preg_match_all('/ > (.*)/', $missing_block, $matches);
+                $results['missing'] = $matches[1] ?? [];
+            }
+        }
+
+        // --- АВТО-ТРЕКИНГ ИЗМЕНЕНИЙ (СНЯТЫ/ДОБАВЛЕНЫ) ---
+        try {
+            require_once 'db.php';
+            
+            // 1. Извлекаем список текущих ID из вывода селфбота
+            if (preg_match('/---CURRENT_DISCORD_IDS---\n(.*?)\n---END_CURRENT_DISCORD_IDS---/s', $raw_output, $matches)) {
+                $current_ids = array_filter(explode(',', trim($matches[1])));
+                
+                // 2. Получаем список ID, которые были в прошлый раз
+                $stmt = $pdo->query("SELECT discord_id FROM supports_current");
+                $last_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                
+                // 3. Вычисляем разницу
+                $added_ids = array_diff($current_ids, $last_ids);   // Есть сейчас, не было раньше
+                $removed_ids = array_diff($last_ids, $current_ids); // Были раньше, нет сейчас
+                
+                $added_count = count($added_ids);
+                $removed_count = count($removed_ids);
+                
+                // 4. Если есть изменения, записываем их в статистику (по дням)
+                $is_first_run = (count($last_ids) === 0);
+                
+                $stmt = $pdo->prepare("INSERT INTO sync_stats (added_count, removed_count, sheet_total, discord_total) VALUES (?, ?, ?, ?)");
+                $stmt->execute([
+                    $is_first_run ? 0 : $added_count, 
+                    $is_first_run ? 0 : $removed_count,
+                    $results['sheet_count'],
+                    $results['discord_count']
+                ]);
+
+                // Обновляем список ID
+                $pdo->exec("DELETE FROM supports_current");
+                $ins = $pdo->prepare("INSERT INTO supports_current (discord_id) VALUES (?)");
+                foreach ($current_ids as $cid) {
+                    $ins->execute([$cid]);
+                }
+            }
+        } catch (Exception $e) {
+            file_put_contents('debug_sync_error.txt', $e->getMessage(), FILE_APPEND);
+        }
+
+        echo json_encode($results);
+        exit;
+    } else {
+        $debug_info = implode("\n", $output);
+        echo json_encode(['success' => false, 'error' => 'Ошибка при запуске скрипта сверки', 'debug' => $debug_info]);
+        exit;
     }
-    $debug_info = implode("\n", $output);
-    echo json_encode(['success' => false, 'error' => 'Ошибка при запуске скрипта сверки', 'debug' => $debug_info]);
-}

@@ -178,7 +178,10 @@ $archive = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <main class="main-content">
             <header class="header glass">
                 <h1>Архив переаттестаций</h1>
-                <div class="user-profile">
+                <div class="user-profile" style="display: flex; gap: 10px;">
+                    <a href="reattestation.php" class="btn-logout-premium" style="background: rgba(99, 102, 241, 0.1); color: #A78BFA; border: 1px solid rgba(99, 102, 241, 0.2);">
+                        <i class="fas fa-list"></i> Результаты переаттестации
+                    </a>
                     <a href="logout.php" class="btn-logout-premium">
                         <i class="fas fa-sign-out-alt"></i> Выйти
                     </a>

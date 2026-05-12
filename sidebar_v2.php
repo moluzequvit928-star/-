@@ -3,9 +3,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 $role = $_SESSION['role'] ?? 'master';
 $total_users = 0;
 try {
-    if (isset($pdo)) {
+    if (isset($pdo) && $pdo) {
         $stmtCount = $pdo->query("SELECT COUNT(*) FROM users");
-        $total_users = $stmtCount->fetchColumn();
+        if ($stmtCount) {
+            $total_users = $stmtCount->fetchColumn();
+        }
     }
 } catch (Exception $e) {}
 ?>
@@ -100,13 +102,6 @@ try {
                         <i class="fas fa-sync-alt"></i> <span>Сверка таблиц</span>
                     </a>
                 </li>
-                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
-                <li class="nav-item">
-                    <a href="sync_stats.php" class="nav-link <?= $currentPage === 'sync_stats.php' ? 'active' : '' ?>">
-                        <i class="fas fa-chart-line"></i> <span>Статистика</span>
-                    </a>
-                </li>
-                <?php endif; ?>
             </ul>
         </div>
 

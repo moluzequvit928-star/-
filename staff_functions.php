@@ -13,10 +13,14 @@ function configValue($envName, $configKey, $default = '')
 function getGoogleSheetCsvUrl($gid)
 {
     $sheetId = configValue('GOOGLE_SHEET_ID', 'google_sheet_id', '1w2r_C3R7kh5CDvlehOHOjd3DPnvCMBQ9SnXZnB6t754');
-    return "https://docs.google.com/spreadsheets/d/{$sheetId}/export?format=csv&gid={$gid}";
+    $url = "https://docs.google.com/spreadsheets/d/{$sheetId}/export?format=csv";
+    if ($gid !== null && $gid !== '') {
+        $url .= "&gid={$gid}";
+    }
+    return $url;
 }
 
-function loadCsvRows($url, $customCacheTime = 300)
+function loadCsvRows($url, $customCacheTime = 600) // Увеличили кэш до 10 минут по умолчанию
 {
     if (!$url)
         return [];
@@ -26,16 +30,17 @@ function loadCsvRows($url, $customCacheTime = 300)
         @mkdir($cacheDir, 0777, true);
 
     $cacheFile = $cacheDir . '/' . md5($url) . '.csv';
-    $cacheTime = $customCacheTime; 
-
-    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheTime)) {
+    
+    // Если файл существует и он свежий - читаем его
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $customCacheTime)) {
         $csvData = @file_get_contents($cacheFile);
     } else {
+        // Иначе качаем заново
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2); // Быстрее таймаут на коннект
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);       // Быстрее таймаут на загрузку
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         $csvData = curl_exec($ch);
@@ -44,6 +49,7 @@ function loadCsvRows($url, $customCacheTime = 300)
         if ($csvData) {
             file_put_contents($cacheFile, $csvData);
         } elseif (file_exists($cacheFile)) {
+            // Если не удалось скачать, но есть старый кэш - используем его
             $csvData = file_get_contents($cacheFile);
         } else {
             return [];
@@ -69,7 +75,7 @@ function normalizeText($text)
 
 function getAllDashboardData($pdo)
 {
-    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));
+    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', ''));
     $rows = loadCsvRows($csvUrl);
 
     $management = [
@@ -192,7 +198,7 @@ function getReattestationQueue($pdo)
 
 function getShiftSlots()
 {
-    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));
+    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', ''));
     $rows = loadCsvRows($csvUrl);
 
     $shifts = [];
