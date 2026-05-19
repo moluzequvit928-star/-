@@ -137,6 +137,8 @@ require_once 'user_header.php';
                             });
                         });
 
+                        const isAdmin = <?= ($_SESSION['role'] ?? 'master') === 'admin' ? 'true' : 'false' ?>;
+
                         const renderBlock = (label, members, icon, categoryClass) => {
                             if (!members || members.length === 0) return '';
                             const html = members.map(member => `
@@ -148,6 +150,19 @@ require_once 'user_header.php';
                                     <div class="staff-info">
                                         <div class="staff-name">${member.nick}</div>
                                         <div style="font-size: 0.9rem; color: var(--text-secondary); font-family: monospace; opacity: 0.8;">${member.discord_id || 'ID не указан'}</div>
+                                        <div class="staff-branch-time" style="font-size: 0.75rem; margin-top: 6px; display: flex; align-items: center; gap: 4px; font-weight: 500; color: ${member.appointment_date ? '#a78bfa' : '#64748b'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            <i class="fas fa-calendar-day" style="font-size: 0.75rem; flex-shrink: 0;"></i>
+                                            <span style="flex-shrink: 0;">На ветке:</span>
+                                            <span style="font-weight: 700; color: ${member.appointment_date ? '#fff' : '#64748b'}; flex-shrink: 0;">${member.appointment_date ? `${member.days_on_branch} дн.` : '—'}</span>
+                                            ${member.appointment_date ? `<span style="font-size: 0.7rem; opacity: 0.8; flex-shrink: 0;">(${member.appointment_date.split('-').reverse().join('.')})</span>` : ''}
+                                            ${isAdmin ? `
+                                                <button class="btn-edit-date-inline" style="background: none; border: none; color: #a78bfa; cursor: pointer; padding: 0 2px; font-size: 0.7rem; display: inline-flex; align-items: center; justify-content: center; opacity: 0.7; transition: opacity 0.2s; flex-shrink: 0;" 
+                                                        onclick="openInlineSetDateModal('${member.db_username || member.nick}', '${member.appointment_date || ''}')" 
+                                                        title="Изменить дату">
+                                                    <i class="fas fa-edit" style="font-size: 0.7rem;"></i>
+                                                </button>
+                                            ` : ''}
+                                        </div>
                                         <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
                                             ${member.shift ? `<div class="staff-tag">${member.shift}</div>` : ''}
                                             <a href="profile.php?${member.discord_id ? `id=${member.discord_id}` : `nick=${encodeURIComponent(member.nick)}`}" class="profile-mini-btn">Профиль</a>
@@ -191,6 +206,62 @@ require_once 'user_header.php';
                     console.error('Ошибка при запросе:', err);
                 });
         });
+
+        function openInlineSetDateModal(username, currentDate) {
+            document.getElementById('inlineSetDateUserDisplay').textContent = username;
+            document.getElementById('inlineSetDateUsernameInput').value = username;
+            document.getElementById('inlineSetDateInput').value = currentDate;
+            document.getElementById('modalInlineSetDate').style.display = 'flex';
+        }
+
+        function closeInlineModal() {
+            document.getElementById('modalInlineSetDate').style.display = 'none';
+        }
+
+        function submitInlineDate(e) {
+            e.preventDefault();
+            const username = document.getElementById('inlineSetDateUsernameInput').value;
+            const newDate = document.getElementById('inlineSetDateInput').value;
+
+            const formData = new FormData();
+            formData.append('action', 'set_appointment_date');
+            formData.append('username', username);
+            formData.append('appointment_date', newDate);
+
+            fetch('users_manage.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => {
+                closeInlineModal();
+                window.location.reload();
+            })
+            .catch(err => {
+                alert('Ошибка при обновлении даты: ' + err);
+            });
+        }
     </script>
+
+    <!-- Modal: Быстрая установка даты становления (только админ) -->
+    <div class="modal" id="modalInlineSetDate" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 10000; transition: all 0.3s ease;">
+        <div class="modal-content" style="background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 2rem; width: 450px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+            <h3 style="color: #fff; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px; font-family: 'Outfit', sans-serif;">
+                <i class="fas fa-calendar-alt" style="color: #a78bfa;"></i> Дата становления
+            </h3>
+            <form id="inlineSetDateForm" onsubmit="submitInlineDate(event)">
+                <input type="hidden" id="inlineSetDateUsernameInput">
+                <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                    <div style="color: #94a3b8; font-size: 0.9rem; font-family: 'Inter', sans-serif;">
+                        Укажите дату назначения сотрудника <b id="inlineSetDateUserDisplay" style="color: #fff;"></b> на должность:
+                    </div>
+                    <input type="date" id="inlineSetDateInput" class="form-control" style="width: 100%; padding: 0.75rem 1rem; color: #fff; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; height: 45px; box-sizing: border-box; font-family: 'Roboto Mono', monospace;">
+                    <div style="display: flex; gap: 12px; margin-top: 1rem;">
+                        <button type="button" class="profile-mini-btn" style="flex: 1; justify-content: center; height: 45px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem;" onclick="closeInlineModal()">Отмена</button>
+                        <button type="submit" class="profile-mini-btn" style="flex: 1; justify-content: center; height: 45px; background: #a78bfa; border: none; color: #0f172a; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 0.9rem;">Сохранить</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

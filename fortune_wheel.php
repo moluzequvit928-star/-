@@ -7,14 +7,30 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
     exit;
 }
 
-// Проверка роли (админ или гл. куратор)
+// Разрешаем доступ админам, гл. кураторам и кураторам
 $u_role = $_SESSION['role'] ?? 'master';
-if ($u_role !== 'admin' && $u_role !== 'chief') {
+if (!in_array($u_role, ['admin', 'chief', 'curator'])) {
     header('Location: index.php');
     exit;
 }
 
+require_once 'db.php';
 require_once 'user_header.php';
+
+$configFile = __DIR__ . '/fortune_wheel_config.json';
+$optionsData = [];
+if (file_exists($configFile)) {
+    $optionsData = json_decode(file_get_contents($configFile), true);
+}
+if (empty($optionsData)) {
+    $optionsData = [
+        ['name' => 'Вариант 1', 'weight' => 20, 'color' => '#6366f1'],
+        ['name' => 'Вариант 2', 'weight' => 20, 'color' => '#8b5cf6'],
+        ['name' => 'Вариант 3', 'weight' => 20, 'color' => '#ec4899'],
+        ['name' => 'Вариант 4', 'weight' => 20, 'color' => '#ef4444'],
+        ['name' => 'Вариант 5', 'weight' => 20, 'color' => '#f59e0b']
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -36,22 +52,30 @@ require_once 'user_header.php';
         }
 
         .wheel-box {
-            flex: 1;
-            min-width: 300px;
+            flex: 1.2;
+            min-width: 350px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
+            padding: 2.5rem !important;
         }
 
         .controls-box {
-            width: 400px;
+            flex: 0.8;
+            min-width: 300px;
             background: var(--bg-card);
             border-radius: 24px;
             padding: 2rem;
             border: 1px solid var(--border-color);
             box-shadow: var(--card-shadow);
+        }
+
+        .wheel-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 0 auto;
         }
 
         #wheel-canvas {
@@ -64,7 +88,7 @@ require_once 'user_header.php';
 
         .wheel-pointer {
             position: absolute;
-            top: -10px;
+            top: -12px;
             left: 50%;
             transform: translateX(-50%);
             width: 40px;
@@ -72,50 +96,37 @@ require_once 'user_header.php';
             background: #ef4444;
             clip-path: polygon(50% 100%, 0 0, 100% 0);
             z-index: 10;
-            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
         }
 
-        .option-item {
+        .option-item-display {
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
             margin-bottom: 10px;
-            background: rgba(255,255,255,0.03);
-            padding: 10px;
+            background: rgba(255,255,255,0.02);
+            padding: 12px 16px;
             border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: 0.2s;
         }
 
-        .option-item input {
-            background: transparent;
-            border: none;
-            color: white;
-            flex: 1;
-            font-size: 0.9rem;
-            outline: none;
+        .option-item-display:hover {
+            background: rgba(255,255,255,0.04);
+            transform: translateX(3px);
         }
 
-        .btn-add {
-            width: 100%;
-            padding: 12px;
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--accent);
-            border: 1px dashed var(--accent);
-            border-radius: 12px;
-            cursor: pointer;
-            margin-bottom: 20px;
-            font-weight: 600;
-            transition: var(--transition);
-        }
-
-        .btn-add:hover {
-            background: var(--accent);
-            color: white;
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
         }
 
         .btn-spin {
             width: 100%;
-            padding: 15px;
+            padding: 16px;
             background: var(--gradient-primary);
             color: white;
             border: none;
@@ -149,6 +160,8 @@ require_once 'user_header.php';
             border: 1px solid rgba(16, 185, 129, 0.2);
             border-radius: 16px;
             display: none;
+            width: 100%;
+            max-width: 400px;
             animation: fadeIn 0.5s ease;
         }
 
@@ -158,10 +171,11 @@ require_once 'user_header.php';
         }
 
         .winner-name {
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             font-weight: 800;
             color: #10b981;
             margin-top: 5px;
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
         }
     </style>
 </head>
@@ -174,45 +188,41 @@ require_once 'user_header.php';
             <header class="header">
                 <div class="header-title">
                     <h1>Колесо Фортуны</h1>
-                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Настройте варианты и испытайте удачу.</p>
-                </div>
-                
-                <div class="user-profile">
-                    <img src="<?= $avatar_url ?>" class="avatar" alt="">
-                    <span style="font-weight: 700; margin-right: 1rem;"><?= htmlspecialchars($username) ?></span>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Испытайте удачу и посмотрите, кто или какой приз выпадет сегодня!</p>
                 </div>
             </header>
 
             <div class="wheel-container">
                 <div class="wheel-box card">
-                    <div class="wheel-pointer"></div>
-                    <canvas id="wheel-canvas" width="500" height="500"></canvas>
+                    <div class="wheel-wrapper">
+                        <div class="wheel-pointer"></div>
+                        <canvas id="wheel-canvas" width="500" height="500"></canvas>
+                    </div>
                     
                     <div id="winner-box" class="winner-display">
-                        <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary);">Победитель:</div>
+                        <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-secondary); font-weight: 600;">Победитель:</div>
                         <div id="winner-name" class="winner-name">Никто</div>
                     </div>
                 </div>
 
                 <div class="controls-box">
-                    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-list-ul" style="color: var(--accent);"></i> Варианты
+                    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+                        <span style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-list-ul" style="color: var(--accent);"></i> Варианты
+                        </span>
+                        <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief'])): ?>
+                            <a href="fortune_wheel_settings.php" style="font-size: 0.85rem; color: var(--accent); text-decoration: none; display: flex; align-items: center; gap: 5px;">
+                                <i class="fas fa-cog"></i> Настроить
+                            </a>
+                        <?php endif; ?>
                     </h3>
                     
-                    <div id="options-list">
-                        <!-- Options will be here -->
+                    <div id="options-list" style="max-height: 320px; overflow-y: auto; padding-right: 5px;">
+                        <!-- Наполняется динамически -->
                     </div>
-
-                    <button class="btn-add" onclick="addOption()">
-                        <i class="fas fa-plus"></i> Добавить вариант
-                    </button>
 
                     <button id="spin-button" class="btn-spin" onclick="spinWheel()">
                         КРУТИТЬ КОЛЕСО
-                    </button>
-                    
-                    <button class="btn" style="width: 100%; margin-top: 10px; background: rgba(255,255,255,0.05); color: var(--text-secondary);" onclick="resetWheel()">
-                        Сбросить
                     </button>
                 </div>
             </div>
@@ -227,31 +237,25 @@ require_once 'user_header.php';
         const winnerBox = document.getElementById('winner-box');
         const winnerName = document.getElementById('winner-name');
 
-        let options = ["Вариант 1", "Вариант 2", "Вариант 3", "Вариант 4", "Вариант 5"];
+        // Загрузка настроек с бэкенда
+        const optionsData = <?php echo json_encode($optionsData); ?>;
+        
         let startAngle = 0;
-        let arc = Math.PI / (options.length / 2);
-        let spinTimeout = null;
-        let spinAngleStart = 10;
-        let spinTime = 0;
-        let spinTimeTotal = 0;
-
-        const colors = [
-            "#6366f1", "#8b5cf6", "#ec4899", "#ef4444", "#f59e0b", 
-            "#10b981", "#06b6d4", "#3b82f6", "#6d28d9", "#db2777"
-        ];
-
+        let arc = Math.PI / (optionsData.length / 2);
+        
+        // Отрисовка колеса
         function drawWheel() {
             ctx.clearRect(0, 0, 500, 500);
             
-            const radius = 240;
+            const radius = 230;
             const centerX = 250;
             const centerY = 250;
 
-            arc = Math.PI / (options.length / 2);
+            arc = Math.PI / (optionsData.length / 2);
 
-            for (let i = 0; i < options.length; i++) {
+            for (let i = 0; i < optionsData.length; i++) {
                 const angle = startAngle + i * arc;
-                ctx.fillStyle = colors[i % colors.length];
+                ctx.fillStyle = optionsData[i].color;
 
                 ctx.beginPath();
                 ctx.moveTo(centerX, centerY);
@@ -259,138 +263,135 @@ require_once 'user_header.php';
                 ctx.lineTo(centerX, centerY);
                 ctx.fill();
 
-                // Add text
+                // Добавление текста
                 ctx.save();
                 ctx.fillStyle = "white";
-                ctx.translate(centerX + Math.cos(angle + arc / 2) * radius * 0.7, 
-                              centerY + Math.sin(angle + arc / 2) * radius * 0.7);
+                ctx.translate(centerX + Math.cos(angle + arc / 2) * radius * 0.65, 
+                              centerY + Math.sin(angle + arc / 2) * radius * 0.65);
                 ctx.rotate(angle + arc / 2 + Math.PI / 2);
-                const text = options[i];
-                ctx.font = 'bold 16px Inter';
-                ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
+                
+                const text = optionsData[i].name;
+                ctx.font = 'bold 14px Inter';
+                ctx.shadowColor = "rgba(0,0,0,0.5)";
+                ctx.shadowBlur = 4;
+                
+                // Обрезка текста если слишком длинный
+                let displayName = text;
+                if (displayName.length > 15) {
+                    displayName = displayName.substring(0, 13) + '..';
+                }
+                ctx.fillText(displayName, -ctx.measureText(displayName).width / 2, 0);
                 ctx.restore();
             }
 
-            // Draw center circle
+            // Центральный круг
             ctx.beginPath();
-            ctx.arc(centerX, centerY, 40, 0, Math.PI * 2, false);
+            ctx.arc(centerX, centerY, 45, 0, Math.PI * 2, false);
             ctx.fillStyle = "#1e293b";
             ctx.fill();
-            ctx.strokeStyle = "rgba(255,255,255,0.1)";
-            ctx.lineWidth = 5;
+            
+            // Градиентная обводка центрального круга
+            ctx.strokeStyle = "rgba(255,255,255,0.15)";
+            ctx.lineWidth = 6;
             ctx.stroke();
 
-            // Center icon or text
+            // Текст внутри круга
             ctx.fillStyle = "white";
-            ctx.font = 'bold 12px Inter';
-            ctx.fillText("FUTURAMA", centerX - 32, centerY + 5);
+            ctx.font = 'bold 11px Outfit';
+            ctx.fillText("FUTURAMA", centerX - 29, centerY + 4);
         }
 
-        function rotateWheel() {
-            spinTime += 30;
-            if (spinTime >= spinTimeTotal) {
-                stopRotateWheel();
-                return;
-            }
-            const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
-            startAngle += (spinAngle * Math.PI / 180);
-            drawWheel();
-            spinTimeout = setTimeout(rotateWheel, 30);
-        }
-
-        function stopRotateWheel() {
-            clearTimeout(spinTimeout);
-            const degrees = startAngle * 180 / Math.PI + 90;
-            const arcd = arc * 180 / Math.PI;
-            const index = Math.floor((360 - degrees % 360) / arcd);
+        // Рендеринг вариантов в панели справа
+        function renderOptions() {
+            optionsList.innerHTML = '';
             
-            const winner = options[index];
-            winnerName.textContent = winner;
+            optionsData.forEach(opt => {
+                const div = document.createElement('div');
+                div.className = 'option-item-display';
+                div.innerHTML = `
+                    <div style="display: flex; align-items: center;">
+                        <span class="color-dot" style="background-color: ${opt.color}; box-shadow: 0 0 8px ${opt.color}aa;"></span>
+                        <span style="font-weight: 500; color: #f1f5f9;">${opt.name}</span>
+                    </div>
+                `;
+                optionsList.appendChild(div);
+            });
+        }
+
+        // Кручение колеса (с учетом шансов/весов)
+        let animationFrameId = null;
+        
+        function spinWheel() {
+            if (optionsData.length === 0) return;
+            winnerBox.style.display = 'none';
+            spinBtn.disabled = true;
+
+            // 1. Рассчитываем общий вес
+            let totalWeight = 0;
+            optionsData.forEach(opt => totalWeight += parseFloat(opt.weight));
+
+            // 2. Выбираем победителя по весу
+            const rand = Math.random() * totalWeight;
+            let targetIndex = 0;
+            let cumulativeWeight = 0;
+            
+            for (let i = 0; i < optionsData.length; i++) {
+                cumulativeWeight += parseFloat(optionsData[i].weight);
+                if (rand <= cumulativeWeight) {
+                    targetIndex = i;
+                    break;
+                }
+            }
+
+            // 3. Вычисляем финальный угол, при котором выбранный сектор окажется на 12 часах
+            arc = Math.PI / (optionsData.length / 2);
+            // 1.5 * Math.PI - 12 часов в canvas. Смещаем на середину выигравшего сектора.
+            const targetAngle = 1.5 * Math.PI - (targetIndex * arc + arc / 2) + (Math.PI * 2 * 6); // 6 полных оборотов
+
+            // 4. Запуск премиальной requestAnimationFrame анимации
+            const duration = 6500; // 6.5 секунд для сохранения драмы
+            const startTime = performance.now();
+            const startAngleState = startAngle % (Math.PI * 2);
+
+            function animate(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+
+                // Easing out cubic: progress = 1 - (1 - progress)^3
+                const ease = 1 - Math.pow(1 - progress, 3);
+                startAngle = startAngleState + ease * (targetAngle - startAngleState);
+                
+                drawWheel();
+
+                if (progress < 1) {
+                    animationFrameId = requestAnimationFrame(animate);
+                } else {
+                    stopWheelAnimation(targetIndex);
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        function stopWheelAnimation(winnerIndex) {
+            cancelAnimationFrame(animationFrameId);
+            
+            const winner = optionsData[winnerIndex];
+            winnerName.textContent = winner.name;
             winnerBox.style.display = 'block';
             spinBtn.disabled = false;
 
-            // Celebration
+            // Эффект победных конфетти
             confetti({
                 particleCount: 150,
                 spread: 70,
                 origin: { y: 0.6 },
-                colors: ['#6366f1', '#8b5cf6', '#10b981']
+                colors: ['#6366f1', '#8b5cf6', '#ec4899', '#10b981']
             });
         }
 
-        function easeOut(t, b, c, d) {
-            const ts = (t /= d) * t;
-            const tc = ts * t;
-            return b + c * (tc + -3 * ts + 3 * t);
-        }
-
-        function spinWheel() {
-            if (options.length === 0) return;
-            winnerBox.style.display = 'none';
-            // Увеличиваем начальную скорость (было ~10-20, стало ~25-35)
-            spinAngleStart = Math.random() * 10 + 25;
-            spinTime = 0;
-            // Увеличиваем время вращения (было 4-7 сек, стало 8-12 сек)
-            spinTimeTotal = Math.random() * 4000 + 8000;
-            spinBtn.disabled = true;
-            rotateWheel();
-        }
-
-        function updateOptions() {
-            options = [];
-            const inputs = optionsList.querySelectorAll('input');
-            inputs.forEach(input => {
-                if (input.value.trim() !== "") {
-                    options.push(input.value.trim());
-                }
-            });
-            if (options.length === 0) options = ["Пусто"];
-            
-            // Save to localStorage
-            localStorage.setItem('fortune_wheel_options', JSON.stringify(options));
-            
-            drawWheel();
-        }
-
-        function addOption(val = "") {
-            const div = document.createElement('div');
-            div.className = 'option-item';
-            div.innerHTML = `
-                <i class="fas fa-grip-lines" style="color: var(--text-muted); cursor: move;"></i>
-                <input type="text" value="${val}" placeholder="Введите вариант..." onchange="updateOptions()">
-                <button class="btn-danger" style="padding: 5px 10px; border-radius: 8px;" onclick="removeOption(this)">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            `;
-            optionsList.appendChild(div);
-            updateOptions();
-        }
-
-        function removeOption(btn) {
-            btn.parentElement.remove();
-            updateOptions();
-        }
-
-        function resetWheel() {
-            optionsList.innerHTML = '';
-            const defaultOptions = ["Вариант 1", "Вариант 2", "Вариант 3"];
-            defaultOptions.forEach(opt => addOption(opt));
-            winnerBox.style.display = 'none';
-            localStorage.setItem('fortune_wheel_options', JSON.stringify(defaultOptions));
-        }
-
-        // Initialize
-        const savedOptions = localStorage.getItem('fortune_wheel_options');
-        if (savedOptions) {
-            try {
-                options = JSON.parse(savedOptions);
-            } catch (e) {
-                console.error("Error parsing saved options", e);
-            }
-        }
-        
-        optionsList.innerHTML = '';
-        options.forEach(opt => addOption(opt));
+        // Инициализация
+        renderOptions();
         drawWheel();
     </script>
 </body>

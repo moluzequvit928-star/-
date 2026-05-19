@@ -16,8 +16,10 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec("SET NAMES utf8mb4");
 
-    // Инициализация БД теперь вынесена в отдельный файл или выполняется один раз вручную.
-    // Если нужно создать таблицы, запустите скрипт setup_db.php (я его создам ниже).
+    // Безопасное авто-добавление колонки при первом подключении
+    try {
+        $pdo->exec("ALTER TABLE users ADD COLUMN appointment_date DATE DEFAULT NULL");
+    } catch (Exception $e) {}
 
 } catch (PDOException $e) {
     // Если базы не существует, попробуем подключиться без нее и создать (только для локалки)

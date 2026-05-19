@@ -84,6 +84,13 @@ try {
                     </a>
                 </li>
                 <?php endif; ?>
+                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief'])): ?>
+                <li class="nav-item">
+                    <a href="fortune_wheel_settings.php" class="nav-link <?= $currentPage === 'fortune_wheel_settings.php' ? 'active' : '' ?>">
+                        <i class="fas fa-sliders-h"></i> <span>Настройка колеса</span>
+                    </a>
+                </li>
+                <?php endif; ?>
 
             </ul>
         </div>
@@ -102,13 +109,18 @@ try {
                         <i class="fas fa-sync-alt"></i> <span>Сверка таблиц</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="https://docs.google.com/document/d/1tef_iQ0GuuIVgQRI15Ql8H74BFPjEcI9Cg3qZCQrtL8/edit?usp=drivesdk" target="_blank" class="nav-link">
+                        <i class="fas fa-user-check"></i> <span>Собесник саппортов</span>
+                    </a>
+                </li>
             </ul>
         </div>
 
         <div class="nav-section">
             <div class="nav-label">СИСТЕМА</div>
             <ul class="nav-menu">
-                <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
+                <?php if (($_SESSION['role'] ?? 'master') === 'admin'): ?>
                 <li class="nav-item">
                     <a href="users_manage.php" class="nav-link <?= $currentPage === 'users_manage.php' ? 'active' : '' ?>">
                         <i class="fas fa-users-cog"></i> <span>Пользователи</span>

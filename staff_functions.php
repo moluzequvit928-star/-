@@ -91,12 +91,22 @@ function getAllDashboardData($pdo)
 
     // Предзагрузка пользователей
     $userMap = [];
-    $stmtUsers = $pdo->query("SELECT username, discord_id, banner_url FROM users");
+    $stmtUsers = $pdo->query("SELECT username, discord_id, banner_url, appointment_date FROM users");
     while ($u = $stmtUsers->fetch(PDO::FETCH_ASSOC)) {
         $key = str_replace('_', '', mb_strtolower(trim($u['username'])));
+        
+        $daysOnBranch = null;
+        if (!empty($u['appointment_date'])) {
+            $diff = time() - strtotime($u['appointment_date']);
+            $daysOnBranch = max(0, (int)floor($diff / 86400));
+        }
+
         $userMap[$key] = [
+            'username' => $u['username'],
             'id' => $u['discord_id'],
-            'banner' => $u['banner_url']
+            'banner' => $u['banner_url'],
+            'appointment_date' => $u['appointment_date'],
+            'days_on_branch' => $daysOnBranch
         ];
     }
 
@@ -111,6 +121,9 @@ function getAllDashboardData($pdo)
                 $d_id = $userData['id'] ?? null;
             }
             $banner_url = $userData['banner'] ?? '';
+            $appt_date = $userData['appointment_date'] ?? null;
+            $days_on_branch = $userData['days_on_branch'] ?? null;
+            $db_username = $userData['username'] ?? null;
 
             $curr_shift = isset($row[19]) ? trim((string) $row[19]) : '';
             if ($curr_shift !== '')
@@ -118,7 +131,16 @@ function getAllDashboardData($pdo)
 
             if ($nickname !== '' && $role_text !== '' && $nickname !== 'Никнейм') {
                 $role_l = mb_strtolower($role_text);
-                $entry = ['name' => $role_text, 'nick' => $nickname, 'shift' => $lastSeenShift, 'discord_id' => $d_id, 'banner' => $banner_url];
+                $entry = [
+                    'name' => $role_text, 
+                    'nick' => $nickname, 
+                    'db_username' => $db_username,
+                    'shift' => $lastSeenShift, 
+                    'discord_id' => $d_id, 
+                    'banner' => $banner_url,
+                    'appointment_date' => $appt_date,
+                    'days_on_branch' => $days_on_branch
+                ];
                 if (mb_strpos($role_l, 'гл. куратор') !== false || mb_strpos($role_l, 'глк') !== false) $management['chief'][] = $entry;
                 elseif (mb_strpos($role_l, 'админ') !== false) $management['admin'][] = $entry;
                 elseif (mb_strpos($role_l, 'куратор') !== false) $management['curators'][] = $entry;
@@ -347,3 +369,15 @@ function getMasterNicksForCurator($curatorNick) {
 function getAvatarUrl($discordId, $username = '') {
     return "avatar.php?id=" . urlencode($discordId) . "&seed=" . urlencode($username ?: 'default');
 }
+
+function getRoleDisplayName($role) {
+    $roles = [
+        'admin' => 'Администратор',
+        'chief' => 'Гл. Куратор',
+        'curator' => 'Куратор',
+        'master' => 'Мастер',
+        'helper' => 'Помощник'
+    ];
+    return $roles[$role] ?? $role;
+}
+

@@ -6,9 +6,9 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
     exit;
 }
 
-// Доступ к странице только для Админов, Гл. Кураторов и Кураторов
+// Доступ к странице только для Системного Администратора (admin)
 $current_role = $_SESSION['role'] ?? 'master';
-if (!in_array($current_role, ['admin', 'chief', 'curator'])) {
+if ($current_role !== 'admin') {
     header('Location: index.php');
     exit;
 }
@@ -23,8 +23,33 @@ $messageType = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
+    // Установка даты становления (только админ)
+    if ($action === 'set_appointment_date') {
+        if ($current_role !== 'admin') {
+            $message = 'Ошибка: У вас недостаточно прав для установки даты становления!';
+            $messageType = 'error';
+        } else {
+            $tgt_username = trim($_POST['username'] ?? '');
+            $appt_date    = trim($_POST['appointment_date'] ?? '');
+            
+            if ($appt_date === '') {
+                $appt_date = null;
+            }
+            
+            try {
+                $stmt = $pdo->prepare("UPDATE users SET appointment_date = ? WHERE username = ?");
+                $stmt->execute([$appt_date, $tgt_username]);
+                $message = "Дата становления для «{$tgt_username}» успешно обновлена!";
+                $messageType = 'success';
+            } catch (Exception $e) {
+                $message = "Ошибка при обновлении даты: " . $e->getMessage();
+                $messageType = 'error';
+            }
+        }
+    }
+
     // Только АДМИН и ГЛ. КУРАТОР может добавлять, удалять или банить
-    if ($current_role !== 'admin' && $current_role !== 'chief') {
+    elseif ($current_role !== 'admin' && $current_role !== 'chief') {
         $message = 'Ошибка: У вас недостаточно прав для этого действия!';
         $messageType = 'error';
     } else {
@@ -34,6 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $new_password = trim($_POST['new_password'] ?? '');
             $new_discord  = trim($_POST['new_discord'] ?? '');
             $new_role     = $_POST['new_role'] ?? 'master';
+            $new_appt     = trim($_POST['new_appointment_date'] ?? '');
+
+            if ($new_appt === '') {
+                $new_appt = null;
+            }
 
             if (!$new_login || !$new_password) {
                 $message = 'Логин и пароль обязательны!';
@@ -45,8 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $message = 'Пользователь с таким логином уже существует!';
                     $messageType = 'error';
                 } else {
-                    $stmt = $pdo->prepare("INSERT INTO users (username, password, discord_id, role) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([$new_login, $new_password, $new_discord ?: 'system', $new_role]);
+                    $stmt = $pdo->prepare("INSERT INTO users (username, password, discord_id, role, appointment_date) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([$new_login, $new_password, $new_discord ?: 'system', $new_role, $new_appt]);
                     $message = "Пользователь «{$new_login}» успешно добавлен!";
                     $messageType = 'success';
                 }
@@ -80,14 +110,120 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// АВТО-ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ (last_seen)
+// АВТО-ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ (last_seen, appointment_date)
 try {
-    $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen DATETIME DEFAULT NULL");
+    $pdo->exec("ALTER TABLE users ADD COLUMN last_seen DATETIME DEFAULT NULL");
 } catch (Exception $e) {}
 
-// Загрузка списка пользователей (СКРЫВАЕМ admin И ТЕХ КТО НЕ ЗАХОДИЛ)
-$stmt = $pdo->query("SELECT * FROM users WHERE username != 'admin' AND last_seen IS NOT NULL ORDER BY role ASC, username ASC");
-$users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+try {
+    $pdo->exec("ALTER TABLE users ADD COLUMN appointment_date DATE DEFAULT NULL");
+} catch (Exception $e) {}
+
+require_once 'staff_functions.php';
+
+// Получаем список активных сотрудников с главной страницы (из Google Таблицы)
+$dashboardData = getAllDashboardData($pdo);
+$activeUsernames = [];
+$activeMembersList = [];
+if (!empty($dashboardData['management'])) {
+    foreach ($dashboardData['management'] as $category => $members) {
+        foreach ($members as $member) {
+            if (!empty($member['nick'])) {
+                $normNick = str_replace('_', '', mb_strtolower(trim($member['nick'])));
+                $activeUsernames[] = $normNick;
+                $activeMembersList[$normNick] = [
+                    'nick' => $member['nick'],
+                    'discord_id' => $member['discord_id'] ?? null,
+                    'role_cat' => $category
+                ];
+            }
+        }
+    }
+}
+$activeUsernames = array_unique($activeUsernames);
+
+// Загрузка всех существующих пользователей из БД
+$stmt = $pdo->query("SELECT * FROM users WHERE username != 'admin'");
+$allUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$existingNormUsers = [];
+foreach ($allUsers as $u) {
+    $existingNormUsers[] = str_replace('_', '', mb_strtolower(trim($u['username'])));
+}
+
+// Загрузим users.json, чтобы подтянуть пароли и Discord ID, если они там есть
+$users_json = __DIR__ . '/users.json';
+$users_json_data = [];
+if (file_exists($users_json)) {
+    $users_json_data = json_decode(file_get_contents($users_json), true) ?: [];
+}
+
+// Автоматически регистрируем сотрудников из Google Таблицы, которых еще нет в БД, и обновляем роли для существующих!
+foreach ($activeMembersList as $normNick => $mInfo) {
+    // Определяем правильную роль на основе Google Таблицы
+    $gRole = 'master';
+    if ($mInfo['role_cat'] === 'admin') {
+        $gRole = 'admin';
+    } elseif ($mInfo['role_cat'] === 'chief') {
+        $gRole = 'chief';
+    } elseif ($mInfo['role_cat'] === 'curators') {
+        $gRole = 'curator';
+    }
+
+    if (!in_array($normNick, $existingNormUsers)) {
+        // Пытаемся найти пароль и ID из users.json
+        $realUsername = $mInfo['nick'];
+        $realPassword = '123'; // Пароль по умолчанию
+        $realDiscord = $mInfo['discord_id'] ?: 'system';
+
+        // Ищем в users.json (без учета регистра и подчеркиваний)
+        foreach ($users_json_data as $jUser => $jData) {
+            if (str_replace('_', '', mb_strtolower(trim($jUser))) === $normNick) {
+                $realUsername = $jUser;
+                if (!empty($jData['password'])) {
+                    $realPassword = $jData['password'];
+                }
+                if (!empty($jData['discord_id'])) {
+                    $realDiscord = $jData['discord_id'];
+                }
+                if (!empty($jData['role'])) {
+                    $gRole = $jData['role'];
+                }
+                break;
+            }
+        }
+
+        // Вставляем нового пользователя
+        try {
+            $stmtIns = $pdo->prepare("INSERT INTO users (username, password, discord_id, role) VALUES (?, ?, ?, ?)");
+            $stmtIns->execute([$realUsername, $realPassword, $realDiscord, $gRole]);
+        } catch (Exception $e) {}
+    } else {
+        // Если пользователь уже существует, обновляем его роль в базе данных, если она изменилась в таблице
+        try {
+            $stmtUpdRole = $pdo->prepare("UPDATE users SET role = ? WHERE username = ? AND role != ?");
+            foreach ($allUsers as $u) {
+                if (str_replace('_', '', mb_strtolower(trim($u['username']))) === $normNick) {
+                    $stmtUpdRole->execute([$gRole, $u['username'], $gRole]);
+                    break;
+                }
+            }
+        } catch (Exception $e) {}
+    }
+}
+
+// Загрузка списка пользователей (СКРЫВАЕМ admin)
+$stmt = $pdo->query("SELECT * FROM users WHERE username != 'admin' ORDER BY role ASC, username ASC");
+$allUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Оставляем только тех пользователей, которые видны на главной странице
+$users = [];
+foreach ($allUsers as $u) {
+    $normalizedDbUser = str_replace('_', '', mb_strtolower(trim($u['username'])));
+    if (in_array($normalizedDbUser, $activeUsernames)) {
+        $users[] = $u;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -209,6 +345,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     <th>Сотрудник</th>
                                     <th>Должность</th>
                                     <th>Discord ID</th>
+                                    <th>На ветке с</th>
                                     <th>Последний вход</th>
                                     <th style="text-align: right;">Действия</th>
                                 </tr>
@@ -252,6 +389,20 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         </span>
                                     </td>
                                     <td><code style="color: #94a3b8; font-size: 0.8rem;"><?= htmlspecialchars($u['discord_id'] ?? '—') ?></code></td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="color: #f1f5f9; font-size: 0.85rem; font-family: monospace;">
+                                                <?= !empty($u['appointment_date']) ? date('d.m.Y', strtotime($u['appointment_date'])) : '—' ?>
+                                            </span>
+                                            <?php if ($current_role === 'admin'): ?>
+                                                <button class="btn-action" style="width: 26px; height: 26px; border-radius: 6px; padding: 0; display: inline-flex; align-items: center; justify-content: center;" 
+                                                        onclick="openSetDateModal('<?= htmlspecialchars($u['username']) ?>', '<?= htmlspecialchars($u['appointment_date'] ?? '') ?>')" 
+                                                        title="Изменить дату становления">
+                                                    <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
                                     <td>
                                         <span style="color: #64748b; font-size: 0.85rem;">
                                             <?= !empty($u['last_seen']) ? date('d.m.Y H:i', strtotime($u['last_seen'])) : '—' ?>
@@ -325,9 +476,34 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <option value="chief">Главный Куратор</option>
                         <option value="admin">Администратор</option>
                     </select>
+                    <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 4px; margin-bottom: -4px;">Дата становления:</div>
+                    <input type="date" name="new_appointment_date" class="form-control" style="padding-left: 1rem; color: #fff; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; height: 45px;">
                     <div style="display: flex; gap: 12px; margin-top: 1rem;">
                         <button type="button" class="btn-edit-profile" style="flex: 1; justify-content: center;" onclick="closeModals()">Отмена</button>
-                        <button type="submit" class="btn-edit-profile" style="flex: 2; justify-content: center; background: var(--accent); border: none;">Создать</button>
+                        <button type="submit" class="btn-edit-profile" style="flex: 2; justify-content: center; background: var(--accent); border: none; height: 45px; color: #fff; cursor: pointer; font-weight: 700; border-radius: 10px;">Создать</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Установка даты становления -->
+    <div class="modal" id="modalSetDate">
+        <div class="modal-content">
+            <h3 style="color: #fff; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-calendar-alt" style="color: var(--accent);"></i> Дата становления
+            </h3>
+            <form method="POST">
+                <input type="hidden" name="action" value="set_appointment_date">
+                <input type="hidden" name="username" id="setDateUsernameInput">
+                <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                    <div style="color: #94a3b8; font-size: 0.9rem;">
+                        Укажите дату назначения сотрудника <b id="setDateUserDisplay" style="color: #fff;"></b> на должность:
+                    </div>
+                    <input type="date" name="appointment_date" id="setDateInput" class="form-control" style="padding-left: 1rem; color: #fff; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; height: 45px;">
+                    <div style="display: flex; gap: 12px; margin-top: 1rem;">
+                        <button type="button" class="btn-edit-profile" style="flex: 1; justify-content: center; height: 45px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 10px; cursor: pointer; font-weight: 600;" onclick="closeModals()">Отмена</button>
+                        <button type="submit" class="btn-edit-profile" style="flex: 1; justify-content: center; height: 45px; background: var(--accent); border: none; color: #fff; border-radius: 10px; cursor: pointer; font-weight: 700;">Сохранить</button>
                     </div>
                 </div>
             </form>
@@ -342,6 +518,12 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         function openAddModal() {
             document.getElementById('modalAdd').classList.add('active');
+        }
+        function openSetDateModal(username, currentDate) {
+            document.getElementById('setDateUserDisplay').textContent = username;
+            document.getElementById('setDateUsernameInput').value = username;
+            document.getElementById('setDateInput').value = currentDate;
+            document.getElementById('modalSetDate').classList.add('active');
         }
         function closeModals() {
             document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));

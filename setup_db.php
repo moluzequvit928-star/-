@@ -45,6 +45,7 @@ try {
             added_supports_count INT DEFAULT 0,
             reattestations_count INT DEFAULT 0,
             last_seen DATETIME DEFAULT NULL,
+            appointment_date DATE DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
         "warnings" => "CREATE TABLE IF NOT EXISTS warnings (
@@ -79,6 +80,23 @@ try {
             discord_id VARCHAR(50) PRIMARY KEY,
             username VARCHAR(100) DEFAULT NULL,
             last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "voice_activity" => "CREATE TABLE IF NOT EXISTS voice_activity (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            discord_id VARCHAR(50) NOT NULL,
+            channel_id VARCHAR(50) NOT NULL,
+            start_time TIMESTAMP NOT NULL,
+            end_time TIMESTAMP NULL,
+            duration INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX (discord_id),
+            INDEX (start_time)
+        )",
+        "active_voice_sessions" => "CREATE TABLE IF NOT EXISTS active_voice_sessions (
+            discord_id VARCHAR(50) PRIMARY KEY,
+            channel_id VARCHAR(50) NOT NULL,
+            start_time TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )"
     ];
 

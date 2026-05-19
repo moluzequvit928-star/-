@@ -326,6 +326,43 @@ if ($action === 'get_user_stats') {
     exit;
 }
 
+if ($action === 'bot_profile') {
+    $discordId = $_GET['discord_id'] ?? '';
+    $token = $_GET['token'] ?? '';
+    
+    // Простая проверка токена
+    if ($token !== $apiToken) {
+        echo json_encode(['success' => false, 'error' => 'Invalid token']);
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT username, role, banner_url, about_me, added_supports_count, reattestations_count FROM users WHERE discord_id = ?");
+        $stmt->execute([$discordId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user) {
+            echo json_encode(['success' => false, 'error' => 'User not found']);
+            exit;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'username' => $user['username'],
+            'role' => $user['role'],
+            'banner' => $user['banner_url'],
+            'about' => $user['about_me'],
+            'stats' => [
+                'approved' => $user['added_supports_count'],
+                'reattestations' => $user['reattestations_count']
+            ]
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($action === 'master_details') {
     $username = $_SESSION['username'] ?? '';
     if (!$username) {
@@ -361,6 +398,123 @@ if ($action === 'master_details') {
         ]);
     } else {
         echo json_encode(['success' => false, 'error' => 'Master not found in sheet']);
+    }
+    exit;
+}
+
+if ($action === 'log_voice') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $token = $data['token'] ?? '';
+    if ($token !== $apiToken) {
+        echo json_encode(['success' => false, 'error' => 'Invalid token']);
+        exit;
+    }
+
+    $discordId = $data['discord_id'] ?? '';
+    $channelId = $data['channel_id'] ?? '';
+    $startTime = $data['start_time'] ?? '';
+    $endTime = $data['end_time'] ?? '';
+    $duration = (int)($data['duration'] ?? 0);
+
+    if (!$discordId || !$startTime || !$endTime) {
+        echo json_encode(['success' => false, 'error' => 'Missing data']);
+        exit;
+    }
+
+    try {
+        $start = date('Y-m-d H:i:s', strtotime($startTime));
+        $end = date('Y-m-d H:i:s', strtotime($endTime));
+
+        // Защита от дублей (проверяем по времени окончания и по полному совпадению)
+        $check = $pdo->prepare("SELECT id FROM voice_activity WHERE discord_id = ? AND (end_time = ? OR (start_time = ? AND duration = ?))");
+        $check->execute([$discordId, $end, $start, $duration]);
+        if ($check->fetch()) {
+            echo json_encode(['success' => true, 'message' => 'Duplicate ignored']);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("INSERT INTO voice_activity (discord_id, channel_id, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$discordId, $channelId, $start, $end, $duration]);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'update_active_sessions') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $token = $data['token'] ?? '';
+    if ($token !== $apiToken) {
+        echo json_encode(['success' => false, 'error' => 'Invalid token']);
+        exit;
+    }
+
+    $sessions = $data['sessions'] ?? [];
+    
+    try {
+        $pdo->beginTransaction();
+        $pdo->exec("DELETE FROM active_voice_sessions");
+        
+        if (!empty($sessions)) {
+            $stmt = $pdo->prepare("INSERT INTO active_voice_sessions (discord_id, channel_id, start_time) VALUES (?, ?, ?)");
+            foreach ($sessions as $s) {
+                $stmt->execute([
+                    $s['discord_id'],
+                    $s['channel_id'],
+                    date('Y-m-d H:i:s', strtotime($s['start_time']))
+                ]);
+            }
+        }
+        $pdo->commit();
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'clear_active_sessions') {
+    if (!in_array($_SESSION['role'] ?? '', ['admin', 'chief', 'curator'])) {
+        echo json_encode(['success' => false, 'error' => 'Нет прав']);
+        exit;
+    }
+    try {
+        $pdo->exec("DELETE FROM active_voice_sessions");
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'get_active_sessions') {
+    try {
+        $stmt = $pdo->query("SELECT * FROM active_voice_sessions");
+        $sessions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'data' => $sessions]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'get_voice_stats') {
+    try {
+        $stmt = $pdo->query("
+            SELECT 
+                discord_id, 
+                SUM(duration) as total_seconds,
+                MAX(end_time) as last_seen
+            FROM voice_activity 
+            WHERE start_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            GROUP BY discord_id
+        ");
+        $stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'data' => $stats]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
 }
