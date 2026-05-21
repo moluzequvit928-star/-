@@ -102,6 +102,7 @@ require_once 'user_header.php';
         }
         .result-card.danger { border-top: 4px solid #ef4444; }
         .result-card.warning { border-top: 4px solid #fbbf24; }
+        .result-card.warning-orange { border-top: 4px solid #f97316; }
         .result-header {
             display: flex;
             align-items: center;
@@ -246,6 +247,19 @@ require_once 'user_header.php';
                     </script>
 
                     <div class="results-grid" id="resultsGrid">
+                        <!-- Дубликаты ID (Таблица) -->
+                        <div class="result-card warning-orange" id="duplicateCard" style="grid-column: span 2; display: none;">
+                            <div class="result-header">
+                                <div class="result-title" style="color: #f97316;">
+                                    <i class="fas fa-clone"></i> Дубликаты ID в таблице
+                                </div>
+                                <span class="badge-count" id="duplicateCount">0</span>
+                            </div>
+                            <div id="duplicateList" class="user-list">
+                                <!-- JS items here -->
+                            </div>
+                        </div>
+
                         <!-- Лишние (Discord) -->
                         <div class="result-card danger">
                             <div class="result-header">
@@ -281,9 +295,12 @@ require_once 'user_header.php';
         function renderResults(data) {
             const extraList = document.getElementById('extraList');
             const missingList = document.getElementById('missingList');
+            const duplicateList = document.getElementById('duplicateList');
+            const duplicateCard = document.getElementById('duplicateCard');
             
             document.getElementById('extraCount').textContent = data.extra.length;
             document.getElementById('missingCount').textContent = data.missing.length;
+            document.getElementById('duplicateCount').textContent = data.duplicates ? data.duplicates.length : 0;
 
             extraList.innerHTML = data.extra.length ? data.extra.map(item => `
                 <div class="user-item">
@@ -300,6 +317,29 @@ require_once 'user_header.php';
                     <span class="user-id">${item.split(' (')[1]?.replace(')', '') || ''}</span>
                 </div>
             `).join('') : '<p style="text-align: center; color: var(--text-secondary); padding: 1rem;">Все в порядке ✅</p>';
+
+            if (data.duplicates && data.duplicates.length) {
+                duplicateList.innerHTML = data.duplicates.map(item => {
+                    const idMatch = item.match(/ID (\d+)/);
+                    const idPart = idMatch ? idMatch[1] : '';
+                    const rowsMatch = item.match(/\((.*)\)/);
+                    const rowsPart = rowsMatch ? rowsMatch[1] : '';
+                    
+                    return `
+                        <div class="user-item" style="border-left: 3px solid #f97316; padding-left: 10px;">
+                            <i class="fas fa-clone" style="color: #f97316;"></i>
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                <span style="font-weight: 600;">ID: ${idPart}</span>
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">${rowsPart}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                duplicateCard.style.display = 'block';
+            } else {
+                duplicateList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 1rem;">Дубликатов нет ✅</p>';
+                duplicateCard.style.display = 'block';
+            }
         }
     </script>
 </body>

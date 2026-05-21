@@ -27,16 +27,26 @@ function getSheetData() {
     try {
         if (!fs.existsSync(FILE_PATH)) return null;
         const fileContent = fs.readFileSync(FILE_PATH, 'utf-8');
-        const records = parse(fileContent, { columns: false, skip_empty_lines: true, relax_column_count: true });
+        const records = parse(fileContent, { columns: false, skip_empty_lines: true, relax_column_count: true, info: true });
         
         const mandatoryIds = new Set();
         const ignoredIds = new Set();
+        const supportIdOccurrences = new Map(); // id -> [{ row: rowNum, username: row[2] }]
 
-        records.forEach(row => {
+        records.forEach((item, index) => {
+            const row = item.record;
+            const rowNum = item.info.lines;
             // Столбец D (индекс 3) - саппорты
             const supportId = row[3]?.trim().replace(/"/g, '');
+            const username = row[2]?.trim().replace(/"/g, '') || 'Неизвестно';
+
             if (supportId && /^\d{17,20}$/.test(supportId)) {
                 mandatoryIds.add(supportId);
+                
+                if (!supportIdOccurrences.has(supportId)) {
+                    supportIdOccurrences.set(supportId, []);
+                }
+                supportIdOccurrences.get(supportId).push({ row: rowNum, username: username });
             }
 
             // Столбец W (индекс 22) - вышка
@@ -46,7 +56,17 @@ function getSheetData() {
             }
         });
 
-        return { mandatoryIds, ignoredIds };
+        const duplicates = [];
+        supportIdOccurrences.forEach((occurrences, id) => {
+            if (occurrences.length > 1) {
+                duplicates.push({
+                    id: id,
+                    occurrences: occurrences
+                });
+            }
+        });
+
+        return { mandatoryIds, ignoredIds, duplicates };
     } catch (error) {
         console.error('❌ Ошибка при чтении файла:', error.message);
         return null;
@@ -68,9 +88,10 @@ client.on('ready', async () => {
     const sheetData = getSheetData();
     if (!sheetData) return;
 
-    const { mandatoryIds, ignoredIds } = sheetData;
+    const { mandatoryIds, ignoredIds, duplicates } = sheetData;
     console.log(`📊 В таблице (саппорты): ${mandatoryIds.size} чел.`);
     console.log(`📊 В таблице (вышка): ${ignoredIds.size} чел.`);
+    console.log(`📊 Обнаружено дубликатов ID: ${duplicates.length}`);
 
     try {
         console.log('🔍 Получаю данные участников...');
@@ -98,11 +119,14 @@ client.on('ready', async () => {
 
         console.log('✅ Данные участников получены.');
 
-        // Получаем всех с ролью (быстро, без статусов)
+        // Получаем всех с ролью (быстро, без статусов) с таймаутом, чтобы предотвратить зависание
         let membersWithRole = new Map();
         try {
-            membersWithRole = await guild.members.fetch({ role: ROLE_ID, withPresences: false });
+            const fetchPromise = guild.members.fetch({ role: ROLE_ID, withPresences: false });
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Gateway Timeout')), 8000));
+            membersWithRole = await Promise.race([fetchPromise, timeoutPromise]);
         } catch (e) {
+            console.log(`⚠️ Не удалось получить участников с ролью по API (${e.message}), используем кэш...`);
             membersWithRole = guild.members.cache.filter(m => m.roles.cache.has(ROLE_ID));
         }
 
@@ -140,11 +164,28 @@ client.on('ready', async () => {
         if (missingInDiscord.length > 0) {
             console.log(`\n🟡 НЕТ РОЛИ (есть в таблице, нет роли) [${missingInDiscord.length}]:`);
             for (const id of missingInDiscord) {
-                let user = client.users.cache.get(id) || await client.users.fetch(id).catch(() => null);
+                let user = sheetMembers.get(id)?.user || client.users.cache.get(id);
+                if (!user) {
+                    try {
+                        const fetchUserPromise = client.users.fetch(id);
+                        const timeoutUserPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2500));
+                        user = await Promise.race([fetchUserPromise, timeoutUserPromise]);
+                    } catch (e) {
+                        user = null;
+                    }
+                }
                 console.log(` > ${user ? user.tag : 'Неизвестный'} (${id})`);
             }
         } else {
             console.log('\n✅ Все участники из таблицы имеют роль.');
+        }
+
+        if (duplicates.length > 0) {
+            console.log(`\n🟠 ДУБЛИКАТЫ (дублирование ID в таблице) [${duplicates.length}]:`);
+            duplicates.forEach(d => {
+                const details = d.occurrences.map(o => `строка ${o.row} (${o.username})`).join(', ');
+                console.log(` > ID ${d.id} (${details})`);
+            });
         }
 
         // Выводим список всех текущих ID с ролью для авто-трекинга (скрыто для пользователя в PHP)

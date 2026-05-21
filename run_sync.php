@@ -39,7 +39,8 @@ error_log("Output: " . implode("\n", $output));
             'sheet_count' => 0,
             'discord_count' => 0,
             'extra' => [],
-            'missing' => []
+            'missing' => [],
+            'duplicates' => []
         ];
 
         // Извлекаем цифры
@@ -64,6 +65,16 @@ error_log("Output: " . implode("\n", $output));
                 $missing_block = explode("\n\n", $parts[1])[0];
                 preg_match_all('/ > (.*)/', $missing_block, $matches);
                 $results['missing'] = $matches[1] ?? [];
+            }
+        }
+
+        // Дубликаты (Таблица)
+        if (strpos($raw_output, '🟠') !== false) {
+            $parts = explode('🟠', $raw_output);
+            if (isset($parts[1])) {
+                $duplicates_block = explode("\n\n", $parts[1])[0];
+                preg_match_all('/ > (.*)/', $duplicates_block, $matches);
+                $results['duplicates'] = $matches[1] ?? [];
             }
         }
 
