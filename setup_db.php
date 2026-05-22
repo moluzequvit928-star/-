@@ -66,6 +66,7 @@ try {
             discord_nickname VARCHAR(100) NOT NULL,
             curator VARCHAR(100) NOT NULL,
             result VARCHAR(20) NOT NULL,
+            answers_json TEXT DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
         "sync_stats" => "CREATE TABLE IF NOT EXISTS sync_stats (

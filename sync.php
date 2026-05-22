@@ -157,6 +157,139 @@ require_once 'user_header.php';
             background: var(--accent);
             transition: width 0.3s;
         }
+
+        /* === Виджет проходных === */
+        .channels-widget {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 1.75rem 2rem;
+            margin-bottom: 2rem;
+        }
+        .channels-widget-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        .channels-widget-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+        }
+        .btn-ch-refresh {
+            background: rgba(99,102,241,0.15);
+            color: #a5b4fc;
+            border: 1px solid rgba(99,102,241,0.3);
+            padding: 8px 18px;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.25s;
+        }
+        .btn-ch-refresh:hover {
+            background: rgba(99,102,241,0.3);
+            border-color: rgba(99,102,241,0.6);
+        }
+        .btn-ch-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
+        .ch-loading-text {
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 2rem;
+            font-size: 0.9rem;
+        }
+        /* Список каналов строками */
+        .channels-list { display: flex; flex-direction: column; gap: 8px; }
+        .ch-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 14px;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            transition: background 0.2s;
+        }
+        .ch-row:hover { background: rgba(255,255,255,0.07); }
+        .ch-row.busy { border-color: rgba(34,197,94,0.3); }
+        .ch-row.empty { opacity: 0.45; }
+        .ch-row-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #4ade80;
+        }
+        .ch-row-dot.off { background: rgba(255,255,255,0.15); }
+        .ch-row-name {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            width: 90px;
+            flex-shrink: 0;
+        }
+        .ch-row-count {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: #4ade80;
+            width: 26px;
+            flex-shrink: 0;
+            text-align: center;
+        }
+        .ch-row.empty .ch-row-count { color: rgba(255,255,255,0.2); }
+        .ch-avatars {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        .ch-avatar-wrap {
+            position: relative;
+            margin-left: -8px;
+            transition: transform 0.18s;
+        }
+        .ch-avatars .ch-avatar-wrap:first-child { margin-left: 0; }
+        .ch-avatar-wrap:hover { transform: translateY(-3px) scale(1.12); z-index: 10; }
+        .ch-avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--card-bg);
+            object-fit: cover;
+            display: block;
+        }
+        .ch-avatar-tip {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e2e;
+            color: #e2e8f0;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 20;
+        }
+        .ch-avatar-wrap:hover .ch-avatar-tip { opacity: 1; }
+        .ch-empty-label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.2);
+            font-style: italic;
+        }
+        .ch-total {
+            margin-top: 1rem;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            text-align: right;
+        }
     </style>
 </head>
 <body>
@@ -173,6 +306,19 @@ require_once 'user_header.php';
 
             <div class="page-body">
                 <div class="sync-container">
+
+                    <!-- Ссылка на Чек проходных -->
+                    <div class="channels-widget" style="background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.3); text-align: center; padding: 2.5rem 2rem; margin-bottom: 2rem;">
+                        <i class="fas fa-headset" style="font-size: 2.5rem; color: #818cf8; margin-bottom: 1rem; display: block;"></i>
+                        <h3 style="margin-bottom: 0.5rem; color: #fff; font-weight: 700;">Саппорты в проходных</h3>
+                        <p style="color: #94A3B8; font-size: 0.9rem; margin-bottom: 1.5rem; max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5;">
+                            Мониторинг проходных каналов перенесен на отдельную вкладку! Это позволяет проводить сверку таблиц быстрее и без задержек.
+                        </p>
+                        <a href="lobby_check.php" class="btn-ch-refresh" style="display: inline-flex; width: auto; justify-content: center; text-decoration: none; align-items: center; gap: 8px; margin: 0 auto;">
+                            <i class="fas fa-arrow-right"></i> Перейти к чеку
+                        </a>
+                    </div>
+
                     <div class="sync-hero">
                         <i class="fas fa-sync-alt" style="font-size: 4rem; color: var(--accent); margin-bottom: 1.5rem; display: block;"></i>
                         <h2 style="font-size: 2rem; margin-bottom: 1rem;">Запустить аудит персонала</h2>
@@ -292,6 +438,9 @@ require_once 'user_header.php';
     </div>
 
     <script>
+        // === Виджет проходных перенесен в lobby_check.php ===
+
+        // === Основная сверка ===
         function renderResults(data) {
             const extraList = document.getElementById('extraList');
             const missingList = document.getElementById('missingList');

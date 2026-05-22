@@ -39,14 +39,15 @@ if ($action === 'set_reattestation_result') {
     $nickname = $_POST['discord_nickname'] ?? '';
     $curator = $_POST['curator'] ?? ($_SESSION['username'] ?? 'system');
     $result = $_POST['result'] ?? '';
+    $answersJson = $_POST['answers_json'] ?? null;
     if (!$discordId || !$result) {
         echo json_encode(['success' => false]);
         exit;
     }
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO reattestations (discord_id, discord_nickname, curator, result) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$discordId, $nickname, $curator, $result]);
+        $stmt = $pdo->prepare("INSERT INTO reattestations (discord_id, discord_nickname, curator, result, answers_json) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$discordId, $nickname, $curator, $result, $answersJson]);
 
         $webhook = configValue('APP_SCRIPT_WEBHOOK_URL', 'app_script_webhook_url');
         if ($webhook) {

@@ -77,6 +77,16 @@ try {
                         <i class="fas fa-archive"></i> <span>Архив</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="lobby_check.php" class="nav-link <?= $currentPage === 'lobby_check.php' ? 'active' : '' ?>">
+                        <i class="fas fa-headset"></i> <span>Чек проходных</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="pt_tracker.php" class="nav-link <?= $currentPage === 'pt_tracker.php' ? 'active' : '' ?>">
+                        <i class="fas fa-business-time"></i> <span>Учет ПТ</span>
+                    </a>
+                </li>
                 <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
                 <li class="nav-item">
                     <a href="fortune_wheel.php" class="nav-link <?= $currentPage === 'fortune_wheel.php' ? 'active' : '' ?>">
