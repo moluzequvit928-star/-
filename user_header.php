@@ -63,5 +63,14 @@ $sidebarPendingCount = 0;
         
         const savedFont = localStorage.getItem('site_font') || "'Inter', sans-serif";
         document.documentElement.style.setProperty('--font-family', savedFont);
+
+        const savedGlass = localStorage.getItem('site_glassmorphism') || 'on';
+        document.documentElement.setAttribute('data-glassmorphism', savedGlass);
+
+        const savedGlow = localStorage.getItem('site_neon_glow') || 'on';
+        document.documentElement.setAttribute('data-neon-glow', savedGlow);
+
+        const savedScale = localStorage.getItem('site_scale') || 'normal';
+        document.documentElement.setAttribute('data-scale', savedScale);
     })();
 </script>

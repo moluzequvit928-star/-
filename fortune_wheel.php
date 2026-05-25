@@ -19,8 +19,17 @@ require_once 'user_header.php';
 
 $configFile = __DIR__ . '/fortune_wheel_config.json';
 $optionsData = [];
+$spinSpeed = 3;
 if (file_exists($configFile)) {
-    $optionsData = json_decode(file_get_contents($configFile), true);
+    $config = json_decode(file_get_contents($configFile), true);
+    if (is_array($config)) {
+        if (isset($config['options'])) {
+            $optionsData = $config['options'];
+            $spinSpeed = isset($config['spin_speed']) ? (int)$config['spin_speed'] : 3;
+        } else {
+            $optionsData = $config;
+        }
+    }
 }
 if (empty($optionsData)) {
     $optionsData = [
@@ -239,6 +248,7 @@ if (empty($optionsData)) {
 
         // Загрузка настроек с бэкенда
         const optionsData = <?php echo json_encode($optionsData); ?>;
+        const spinSpeed = <?php echo (int)$spinSpeed; ?>;
         
         let startAngle = 0;
         let arc = Math.PI / (optionsData.length / 2);
@@ -345,11 +355,31 @@ if (empty($optionsData)) {
 
             // 3. Вычисляем финальный угол, при котором выбранный сектор окажется на 12 часах
             arc = Math.PI / (optionsData.length / 2);
+
+            // Определяем длительность анимации и количество полных оборотов на основе скорости
+            let duration = 6500; // По умолчанию (скорость 3)
+            let rotationsCount = 6;
+            if (spinSpeed === 1) {
+                duration = 10000;
+                rotationsCount = 4;
+            } else if (spinSpeed === 2) {
+                duration = 8000;
+                rotationsCount = 5;
+            } else if (spinSpeed === 3) {
+                duration = 6500;
+                rotationsCount = 6;
+            } else if (spinSpeed === 4) {
+                duration = 4000;
+                rotationsCount = 8;
+            } else if (spinSpeed === 5) {
+                duration = 2000;
+                rotationsCount = 10;
+            }
+
             // 1.5 * Math.PI - 12 часов в canvas. Смещаем на середину выигравшего сектора.
-            const targetAngle = 1.5 * Math.PI - (targetIndex * arc + arc / 2) + (Math.PI * 2 * 6); // 6 полных оборотов
+            const targetAngle = 1.5 * Math.PI - (targetIndex * arc + arc / 2) + (Math.PI * 2 * rotationsCount);
 
             // 4. Запуск премиальной requestAnimationFrame анимации
-            const duration = 6500; // 6.5 секунд для сохранения драмы
             const startTime = performance.now();
             const startAngleState = startAngle % (Math.PI * 2);
 

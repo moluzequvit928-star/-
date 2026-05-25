@@ -21,6 +21,19 @@ try {
         $pdo->exec("ALTER TABLE users ADD COLUMN appointment_date DATE DEFAULT NULL");
     } catch (Exception $e) {}
 
+    try {
+        $pdo->exec("ALTER TABLE reattestations ADD COLUMN answers_json TEXT DEFAULT NULL");
+    } catch (Exception $e) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS pt_overrides (
+            discord_id VARCHAR(50) NOT NULL,
+            log_date DATE NOT NULL,
+            status VARCHAR(10) NOT NULL,
+            PRIMARY KEY (discord_id, log_date)
+        )");
+    } catch (Exception $e) {}
+
 } catch (PDOException $e) {
     // Если базы не существует, попробуем подключиться без нее и создать (только для локалки)
     try {

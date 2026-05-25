@@ -12,7 +12,59 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], $allowed_roles)) {
     exit;
 }
 
+require_once 'db.php';
 require_once 'user_header.php';
+
+// Статистика проходок
+$todayReports = 0;
+$weekReports = 0;
+$monthReports = 0;
+
+try {
+    // Сегодня
+    $stmtT = $pdo->query("SELECT COUNT(*) FROM reports WHERE DATE(created_at) = CURDATE()");
+    $todayReports = $stmtT->fetchColumn();
+
+    // Неделя (последние 7 дней)
+    $stmtW = $pdo->query("SELECT COUNT(*) FROM reports WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+    $weekReports = $stmtW->fetchColumn();
+
+    // Месяц (последние 30 дней)
+    $stmtM = $pdo->query("SELECT COUNT(*) FROM reports WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
+    $monthReports = $stmtM->fetchColumn();
+
+    // Данные для графика за последние 7 дней
+    $chartLabels = [];
+    $chartData = [];
+    
+    $stmtChart = $pdo->query("
+        SELECT DATE(created_at) as report_date, COUNT(*) as count 
+        FROM reports 
+        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY DATE(created_at) ASC
+    ");
+    $chartRows = $stmtChart->fetchAll(PDO::FETCH_ASSOC);
+    
+    $indexedChart = [];
+    foreach ($chartRows as $cr) {
+        $indexedChart[$cr['report_date']] = (int)$cr['count'];
+    }
+    
+    for ($i = 6; $i >= 0; $i--) {
+        $date = date('Y-m-d', strtotime("-$i days"));
+        $chartLabels[] = date('d.m', strtotime($date));
+        $chartData[] = $indexedChart[$date] ?? 0;
+    }
+} catch (Exception $e) {
+    // В случае ошибки БД заполняем нулями
+    $chartLabels = [];
+    $chartData = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $chartLabels[] = date('d.m', strtotime("-$i days"));
+        $chartData[] = 0;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -23,6 +75,7 @@ require_once 'user_header.php';
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .lobby-container {
             max-width: 1200px;
@@ -34,6 +87,19 @@ require_once 'user_header.php';
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 1.5rem;
             margin-bottom: 2rem;
+        }
+
+        .chart-layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .chart-layout-grid {
+                grid-template-columns: 1fr !important;
+            }
         }
 
         .lobby-stat-card {
@@ -370,6 +436,49 @@ require_once 'user_header.php';
                         </div>
                     </div>
 
+                    <!-- Статистика забитых проходок -->
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 1rem; margin-bottom: 1.25rem; padding-left: 0.5rem;">
+                        <i class="fas fa-chart-line" style="color: #A78BFA; font-size: 1.2rem;"></i>
+                        <span style="font-size: 1.1rem; font-weight: 700; color: #fff; font-family: 'Outfit', sans-serif;">Учет забитых проходок</span>
+                    </div>
+                    <div class="chart-layout-grid">
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <!-- За сегодня -->
+                            <div class="lobby-stat-card" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(30, 41, 59, 0.4) 100%); margin-bottom: 0;">
+                                <div class="lobby-stat-icon" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa; text-shadow: 0 0 10px rgba(167, 139, 250, 0.3);">
+                                    <i class="fas fa-calendar-day"></i>
+                                </div>
+                                <div>
+                                    <div class="lobby-stat-num" style="color: #fff; font-family: 'Outfit', sans-serif;"><?= $todayReports ?></div>
+                                    <div class="lobby-stat-label">За сегодня</div>
+                                </div>
+                            </div>
+                            <!-- За неделю -->
+                            <div class="lobby-stat-card" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(30, 41, 59, 0.4) 100%); margin-bottom: 0;">
+                                <div class="lobby-stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; text-shadow: 0 0 10px rgba(96, 165, 250, 0.3);">
+                                    <i class="fas fa-calendar-week"></i>
+                                </div>
+                                <div>
+                                    <div class="lobby-stat-num" style="color: #fff; font-family: 'Outfit', sans-serif;"><?= $weekReports ?></div>
+                                    <div class="lobby-stat-label">За неделю</div>
+                                </div>
+                            </div>
+                            <!-- За месяц -->
+                            <div class="lobby-stat-card" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.05) 0%, rgba(30, 41, 59, 0.4) 100%); margin-bottom: 0;">
+                                <div class="lobby-stat-icon" style="background: rgba(236, 72, 153, 0.15); color: #f472b6; text-shadow: 0 0 10px rgba(244, 114, 182, 0.3);">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                                <div>
+                                    <div class="lobby-stat-num" style="color: #fff; font-family: 'Outfit', sans-serif;"><?= $monthReports ?></div>
+                                    <div class="lobby-stat-label">За месяц</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lobby-stat-card" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                            <canvas id="reportsChart" style="max-height: 220px; width: 100%;"></canvas>
+                        </div>
+                    </div>
+
                     <!-- Панель управления и сетка комнат -->
                     <div class="lobby-card-wrapper">
                         <div class="lobby-card-header">
@@ -447,7 +556,23 @@ require_once 'user_header.php';
 
             try {
                 const res = await fetch('run_channels.php');
-                const data = await res.json();
+                const text = await res.text();
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch(e) {
+                    console.error("Non-JSON API response:", text);
+                    clearInterval(progressInterval);
+                    grid.innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 3rem 1rem; color: #f87171;">
+                            <i class="fas fa-triangle-exclamation" style="font-size: 2.5rem; margin-bottom: 1rem; display: block;"></i>
+                            <span style="font-size: 1.1rem; display: block; margin-bottom: 0.5rem; font-weight: 700;">Ошибка сервера (Некорректный JSON)</span>
+                            Сервер вернул некорректный ответ вместо данных. Убедитесь, что бот запущен.
+                            <pre style="text-align: left; background: rgba(0,0,0,0.4); padding: 1.25rem; border-radius: 12px; font-family: monospace; font-size: 0.8rem; margin-top: 1.5rem; overflow-x: auto; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.06); max-height: 250px; line-height: 1.4;">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                        </div>`;
+                    return;
+                }
 
                 clearInterval(progressInterval);
 
@@ -457,6 +582,7 @@ require_once 'user_header.php';
                             <i class="fas fa-triangle-exclamation" style="font-size: 3rem; margin-bottom: 1rem; display: block;"></i>
                             <span style="font-size: 1.1rem; display: block; margin-bottom: 0.5rem; font-weight: 700;">Произошла ошибка</span>
                             ${data.error || 'Не удалось получить данные от селф-бота.'}
+                            ${data.raw ? `<pre style="text-align: left; background: rgba(0,0,0,0.4); padding: 1.25rem; border-radius: 12px; font-family: monospace; font-size: 0.8rem; margin-top: 1.5rem; overflow-x: auto; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.06); max-height: 250px;">${data.raw.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>` : ''}
                         </div>`;
                     return;
                 }
@@ -524,6 +650,89 @@ require_once 'user_header.php';
                 icon.classList.remove('fa-spin');
                 loader.style.display = 'none';
                 grid.style.display = 'grid';
+            }
+        });
+    </script>
+
+    <!-- Инициализация интерактивного графика проходок -->
+    <script>
+        const ctxChart = document.getElementById('reportsChart').getContext('2d');
+        
+        // Создаем градиент для плавной заливки под графиком
+        const gradient = ctxChart.createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(167, 139, 250, 0.4)');
+        gradient.addColorStop(1, 'rgba(167, 139, 250, 0)');
+
+        new Chart(ctxChart, {
+            type: 'line',
+            data: {
+                labels: <?php echo json_encode($chartLabels); ?>,
+                datasets: [{
+                    label: 'Забитые проходные',
+                    data: <?php echo json_encode($chartData); ?>,
+                    borderColor: '#a78bfa',
+                    borderWidth: 3,
+                    backgroundColor: gradient,
+                    fill: true,
+                    tension: 0.4, // Плавный изгиб кривой
+                    pointBackgroundColor: '#8b5cf6',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        padding: 10,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return `Проходок: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.03)'
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: {
+                                family: 'Inter',
+                                size: 11
+                            }
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.03)'
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: {
+                                family: 'Inter',
+                                size: 11
+                            },
+                            stepSize: 1,
+                            precision: 0
+                        },
+                        beginAtZero: true
+                    }
+                }
             }
         });
     </script>

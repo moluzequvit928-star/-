@@ -27,15 +27,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $names = $_POST['names'] ?? [];
         $weights = $_POST['weights'] ?? [];
         $colors = $_POST['colors'] ?? [];
+        $spin_speed = isset($_POST['spin_speed']) ? (int)$_POST['spin_speed'] : 3;
 
-        $newConfig = [];
+        $newOptions = [];
         for ($i = 0; $i < count($names); $i++) {
             $name = trim($names[$i]);
             $weight = floatval($weights[$i]);
             $color = trim($colors[$i]);
 
             if ($name !== '' && $weight > 0) {
-                $newConfig[] = [
+                $newOptions[] = [
                     'name' => $name,
                     'weight' => $weight,
                     'color' => $color ?: '#6366f1'
@@ -43,13 +44,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        if (empty($newConfig)) {
+        if (empty($newOptions)) {
             throw new Exception("Необходимо указать хотя бы один корректный вариант с положительным шансом!");
         }
+
+        $newConfig = [
+            'spin_speed' => $spin_speed,
+            'options' => $newOptions
+        ];
 
         file_put_contents($configFile, json_encode($newConfig, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
         $message = "Настройки колеса фортуны успешно сохранены!";
         $messageType = "success";
+        $spinSpeed = $spin_speed;
     } catch (Exception $e) {
         $message = "Ошибка при сохранении: " . $e->getMessage();
         $messageType = "error";
@@ -58,8 +65,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Загрузка текущих настроек
 $optionsData = [];
+$spinSpeed = 3;
 if (file_exists($configFile)) {
-    $optionsData = json_decode(file_get_contents($configFile), true);
+    $config = json_decode(file_get_contents($configFile), true);
+    if (is_array($config)) {
+        if (isset($config['options'])) {
+            $optionsData = $config['options'];
+            $spinSpeed = isset($config['spin_speed']) ? (int)$config['spin_speed'] : 3;
+        } else {
+            $optionsData = $config;
+        }
+    }
 }
 if (empty($optionsData)) {
     $optionsData = [
@@ -417,6 +433,25 @@ if (empty($optionsData)) {
                         </div>
 
                         <div>
+                            <!-- Настройка скорости вращения -->
+                            <div class="chance-summary-card" style="margin-bottom: 1.5rem; padding: 1.5rem;">
+                                <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-gauge-high" style="color: var(--accent);"></i> Скорость вращения
+                                </h3>
+                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600;">
+                                        <span style="color: var(--text-secondary);">Текущая скорость:</span>
+                                        <span id="speed-display-label" style="color: var(--accent); font-weight: 700;">Обычная</span>
+                                    </div>
+                                    <input type="range" name="spin_speed" id="spin_speed_slider" min="1" max="5" value="<?= $spinSpeed ?>" style="width: 100%; accent-color: var(--accent); cursor: pointer;" oninput="updateSpeedLabel(this.value)">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); font-weight: 600;">
+                                        <span>Медленная</span>
+                                        <span>Обычная</span>
+                                        <span>Молниеносная</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="chance-summary-card">
                                 <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 8px;">
                                     <i class="fas fa-chart-pie" style="color: var(--accent);"></i> Распределение шансов
@@ -576,9 +611,21 @@ if (empty($optionsData)) {
             });
         }
 
+        function updateSpeedLabel(val) {
+            const labels = {
+                1: "Медленная (10с)",
+                2: "Умеренная (8с)",
+                3: "Обычная (6.5с)",
+                4: "Быстрая (4с)",
+                5: "Молниеносная (2с)"
+            };
+            document.getElementById('speed-display-label').textContent = labels[val] || "Обычная";
+        }
+
         // Вызов при инициализации
         document.addEventListener('DOMContentLoaded', () => {
             calculateChances();
+            updateSpeedLabel(document.getElementById('spin_speed_slider').value);
         });
     </script>
 </body>

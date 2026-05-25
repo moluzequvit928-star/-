@@ -47,6 +47,11 @@ require_once 'user_header.php';
             margin-bottom: 1rem;
             border: 1px solid rgba(255,255,255,0.1);
         }
+        .profile-mini-btn.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
     </style>
 </head>
 <body>
@@ -129,6 +134,46 @@ require_once 'user_header.php';
                         </div>
                     </div>
                 </div>
+
+                <!-- Персонализация и эффекты -->
+                <div class="card glass" style="margin-top: 2rem;">
+                    <div class="card-header">
+                        <h3>⚡ Эффекты и персонализация</h3>
+                    </div>
+                    <div class="card-body">
+                        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Настройте оформление и дополнительные эффекты под производительность вашего устройства.</p>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem;">
+                            <!-- Glassmorphism -->
+                            <div>
+                                <h4 style="margin-bottom: 0.75rem; color: #fff; font-size: 0.95rem; font-weight: 700;">Эффект размытия (Glassmorphism)</h4>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="profile-mini-btn" id="glass-on-btn" onclick="setGlassmorphism('on')" style="flex: 1; justify-content: center; height: 42px; font-weight: 700;">Включен</button>
+                                    <button class="profile-mini-btn" id="glass-off-btn" onclick="setGlassmorphism('off')" style="flex: 1; justify-content: center; height: 42px; font-weight: 700;">Отключен</button>
+                                </div>
+                            </div>
+
+                            <!-- Neon Glow -->
+                            <div>
+                                <h4 style="margin-bottom: 0.75rem; color: #fff; font-size: 0.95rem; font-weight: 700;">Неоновое свечение (Neon Glow)</h4>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="profile-mini-btn" id="glow-on-btn" onclick="setNeonGlow('on')" style="flex: 1; justify-content: center; height: 42px; font-weight: 700;">Включено</button>
+                                    <button class="profile-mini-btn" id="glow-off-btn" onclick="setNeonGlow('off')" style="flex: 1; justify-content: center; height: 42px; font-weight: 700;">Отключено</button>
+                                </div>
+                            </div>
+
+                            <!-- Scale -->
+                            <div>
+                                <h4 style="margin-bottom: 0.75rem; color: #fff; font-size: 0.95rem; font-weight: 700;">Масштаб интерфейса (Scale)</h4>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="profile-mini-btn" id="scale-small-btn" onclick="setScale('small')" style="flex: 1; justify-content: center; height: 42px; font-weight: 700;">Мелкий</button>
+                                    <button class="profile-mini-btn" id="scale-normal-btn" onclick="setScale('normal')" style="flex: 1; justify-content: center; height: 42px; font-weight: 700;">Обычный</button>
+                                    <button class="profile-mini-btn" id="scale-large-btn" onclick="setScale('large')" style="flex: 1; justify-content: center; height: 42px; font-weight: 700;">Крупный</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
             </div>
         </main>
@@ -164,12 +209,72 @@ require_once 'user_header.php';
             else if (font.includes('Roboto')) document.getElementById('font-roboto').classList.add('active');
         }
 
+        function setGlassmorphism(state) {
+            document.documentElement.setAttribute('data-glassmorphism', state);
+            localStorage.setItem('site_glassmorphism', state);
+            updateActiveGlass(state);
+        }
+
+        function setNeonGlow(state) {
+            document.documentElement.setAttribute('data-neon-glow', state);
+            localStorage.setItem('site_neon_glow', state);
+            updateActiveGlow(state);
+        }
+
+        function setScale(scale) {
+            document.documentElement.setAttribute('data-scale', scale);
+            localStorage.setItem('site_scale', scale);
+            updateActiveScale(scale);
+        }
+
+        function updateActiveGlass(state) {
+            document.getElementById('glass-on-btn').classList.remove('active');
+            document.getElementById('glass-off-btn').classList.remove('active');
+            if (state === 'on') {
+                document.getElementById('glass-on-btn').classList.add('active');
+            } else {
+                document.getElementById('glass-off-btn').classList.add('active');
+            }
+        }
+
+        function updateActiveGlow(state) {
+            document.getElementById('glow-on-btn').classList.remove('active');
+            document.getElementById('glow-off-btn').classList.remove('active');
+            if (state === 'on') {
+                document.getElementById('glow-on-btn').classList.add('active');
+            } else {
+                document.getElementById('glow-off-btn').classList.add('active');
+            }
+        }
+
+        function updateActiveScale(scale) {
+            document.getElementById('scale-small-btn').classList.remove('active');
+            document.getElementById('scale-normal-btn').classList.remove('active');
+            document.getElementById('scale-large-btn').classList.remove('active');
+            if (scale === 'small') {
+                document.getElementById('scale-small-btn').classList.add('active');
+            } else if (scale === 'large') {
+                document.getElementById('scale-large-btn').classList.add('active');
+            } else {
+                document.getElementById('scale-normal-btn').classList.add('active');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const currentTheme = localStorage.getItem('site_theme') || 'dark';
             updateActiveCard(currentTheme);
             
             const currentFont = localStorage.getItem('site_font') || "'Inter', sans-serif";
             updateActiveFont(currentFont);
+
+            const currentGlass = localStorage.getItem('site_glassmorphism') || 'on';
+            updateActiveGlass(currentGlass);
+
+            const currentGlow = localStorage.getItem('site_neon_glow') || 'on';
+            updateActiveGlow(currentGlow);
+
+            const currentScale = localStorage.getItem('site_scale') || 'normal';
+            updateActiveScale(currentScale);
         });
 
         // Бургер меню

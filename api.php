@@ -520,4 +520,35 @@ if ($action === 'get_voice_stats') {
     exit;
 }
 
+if ($action === 'update_pt_override') {
+    if (!in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])) {
+        echo json_encode(['success' => false, 'error' => 'Нет прав']);
+        exit;
+    }
+    
+    $discordId = $_POST['discord_id'] ?? '';
+    $logDate = $_POST['log_date'] ?? '';
+    $status = $_POST['status'] ?? ''; // 'П', 'О', or 'NONE'
+    
+    if (!$discordId || !$logDate || !$status) {
+        echo json_encode(['success' => false, 'error' => 'Недостаточно данных']);
+        exit;
+    }
+    
+    try {
+        if ($status === 'NONE') {
+            $stmt = $pdo->prepare("DELETE FROM pt_overrides WHERE discord_id = ? AND log_date = ?");
+            $stmt->execute([$discordId, $logDate]);
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO pt_overrides (discord_id, log_date, status) VALUES (?, ?, ?) 
+                                   ON DUPLICATE KEY UPDATE status = VALUES(status)");
+            $stmt->execute([$discordId, $logDate, $status]);
+        }
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['success' => true]);
