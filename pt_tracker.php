@@ -64,15 +64,18 @@ foreach ($rows as $index => $row) {
     }
 }
 
-// Генерируем дни текущей календарной недели (с понедельника по воскресенье)
+// Генерируем дни нужной календарной недели (с понедельника по воскресенье)
 $today = date('Y-m-d');
+$weekOffset = isset($_GET['week']) ? (int)$_GET['week'] : 0;
 $dayOfWeek = date('N', strtotime($today)); // 1 (Пн) - 7 (Вс)
-$monday = date('Y-m-d', strtotime($today . " - " . ($dayOfWeek - 1) . " days"));
+$monday = date('Y-m-d', strtotime($today . ' - ' . ($dayOfWeek - 1) . ' days + ' . ($weekOffset * 7) . ' days'));
 
 $days = [];
 for ($i = 0; $i < 7; $i++) {
     $days[] = date('Y-m-d', strtotime("$monday +$i days"));
 }
+
+$weekLabel = date('d.m', strtotime($days[0])) . ' — ' . date('d.m.Y', strtotime($days[6]));
 
 // Запрашиваем статистику активности из базы данных за эти 7 дней
 $startDate = $days[0] . ' 00:00:00';
@@ -387,12 +390,24 @@ try {
             <header class="header">
                 <div class="header-title">
                     <h1>Учет ПТ саппортов</h1>
-                    <p>Проверка времени активности на сменах за последние 7 дней</p>
+                    <p>Неделя: <strong style="color:#a78bfa;"><?= $weekLabel ?></strong></p>
                 </div>
                 <div class="header-actions">
-                    <button class="btn-sync-pt" onclick="syncWithGoogleSheets()">
-                        <i class="fas fa-arrows-spin"></i> Синхронизация с таблицей
-                    </button>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <a href="pt_tracker.php?week=<?= $weekOffset - 1 ?>" class="btn-sync-pt" style="padding: 0.65rem 1rem;">
+                            <i class="fas fa-chevron-left"></i> Пред. неделя
+                        </a>
+                        <?php if ($weekOffset < 0): ?>
+                        <a href="pt_tracker.php?week=<?= $weekOffset + 1 ?>" class="btn-sync-pt" style="padding: 0.65rem 1rem;">
+                            След. неделя <i class="fas fa-chevron-right"></i>
+                        </a>
+                        <?php endif; ?>
+                        <?php if ($weekOffset !== 0): ?>
+                        <a href="pt_tracker.php" class="btn-sync-pt" style="padding: 0.65rem 1rem; background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); color:#818cf8;">
+                            <i class="fas fa-calendar-day"></i> Тек. неделя
+                        </a>
+                        <?php endif; ?>
+                    </div>
                     <a href="logout.php" class="btn-logout-premium"><i class="fas fa-sign-out-alt"></i> Выйти</a>
                 </div>
             </header>

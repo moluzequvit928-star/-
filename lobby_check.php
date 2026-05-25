@@ -556,6 +556,25 @@ try {
 
             try {
                 const res = await fetch('run_channels.php');
+                
+                // Проверяем HTTP статус
+                if (!res.ok) {
+                    clearInterval(progressInterval);
+                    grid.innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 3rem 1rem;">
+                            <i class="fas fa-robot" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: rgba(167, 139, 250, 0.4);"></i>
+                            <span style="font-size: 1.15rem; display: block; margin-bottom: 0.75rem; font-weight: 800; color: #f1f5f9;">Чек проходных работает только локально</span>
+                            <p style="color: #94a3b8; font-size: 0.9rem; max-width: 420px; margin: 0 auto 1.5rem auto; line-height: 1.6;">
+                                Для проверки состояния комнат необходимо запустить сайт локально (<code style="background:rgba(255,255,255,0.07); padding:2px 6px; border-radius:4px;">start_localhost.bat</code>) 
+                                и запустить селф-бота (<code style="background:rgba(255,255,255,0.07); padding:2px 6px; border-radius:4px;">start_bot.bat</code>).
+                            </p>
+                            <div style="display:inline-flex; gap:8px; align-items:center; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:12px; padding:0.6rem 1.2rem; color:#f87171; font-size:0.82rem;">
+                                <i class="fas fa-circle-xmark"></i> Ошибка ${res.status}: сервер недоступен
+                            </div>
+                        </div>`;
+                    return;
+                }
+                
                 const text = await res.text();
                 
                 let data;
@@ -567,9 +586,9 @@ try {
                     grid.innerHTML = `
                         <div style="grid-column: 1/-1; text-align: center; padding: 3rem 1rem; color: #f87171;">
                             <i class="fas fa-triangle-exclamation" style="font-size: 2.5rem; margin-bottom: 1rem; display: block;"></i>
-                            <span style="font-size: 1.1rem; display: block; margin-bottom: 0.5rem; font-weight: 700;">Ошибка сервера (Некорректный JSON)</span>
-                            Сервер вернул некорректный ответ вместо данных. Убедитесь, что бот запущен.
-                            <pre style="text-align: left; background: rgba(0,0,0,0.4); padding: 1.25rem; border-radius: 12px; font-family: monospace; font-size: 0.8rem; margin-top: 1.5rem; overflow-x: auto; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.06); max-height: 250px; line-height: 1.4;">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                            <span style="font-size: 1.1rem; display: block; margin-bottom: 0.5rem; font-weight: 700;">Некорректный ответ сервера</span>
+                            <p style="color:#94a3b8; font-size:0.88rem; margin-bottom:1rem;">Убедитесь, что бот запущен и сайт работает локально.</p>
+                            <pre style="text-align: left; background: rgba(0,0,0,0.4); padding: 1.25rem; border-radius: 12px; font-family: monospace; font-size: 0.8rem; margin-top: 1rem; overflow-x: auto; color: #e2e8f0; border: 1px solid rgba(255,255,255,0.06); max-height: 200px; line-height: 1.4;">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
                         </div>`;
                     return;
                 }
