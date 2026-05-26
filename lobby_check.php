@@ -400,79 +400,6 @@ try {
             <div class="page-body">
                 <div class="lobby-container">
 
-                    <!-- ЗАГЛУШКА: В разработке -->
-                    <div style="
-                        background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(99, 102, 241, 0.05) 100%);
-                        border: 1px solid rgba(139, 92, 246, 0.2);
-                        border-radius: 28px;
-                        padding: 5rem 3rem;
-                        text-align: center;
-                        backdrop-filter: blur(10px);
-                        position: relative;
-                        overflow: hidden;
-                    ">
-                        <div style="position:absolute;top:-60px;right:-60px;width:250px;height:250px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,0.12),transparent 70%);pointer-events:none;"></div>
-                        <div style="position:absolute;bottom:-80px;left:-80px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,0.1),transparent 70%);pointer-events:none;"></div>
-
-                        <div style="
-                            width: 90px;
-                            height: 90px;
-                            border-radius: 24px;
-                            background: linear-gradient(135deg, rgba(139,92,246,0.25), rgba(99,102,241,0.15));
-                            border: 1px solid rgba(139,92,246,0.3);
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            margin: 0 auto 2rem;
-                            box-shadow: 0 0 40px rgba(139,92,246,0.2);
-                            animation: wip-pulse 3s ease-in-out infinite;
-                        ">
-                            <i class="fas fa-wrench" style="font-size:2.2rem;color:#a78bfa;"></i>
-                        </div>
-
-                        <h2 style="
-                            font-size: 2rem;
-                            font-weight: 800;
-                            color: #fff;
-                            margin: 0 0 0.75rem;
-                            font-family: 'Outfit', sans-serif;
-                            letter-spacing: -0.5px;
-                        ">В разработке</h2>
-
-                        <p style="
-                            color: #94a3b8;
-                            font-size: 1rem;
-                            max-width: 480px;
-                            margin: 0 auto 2.5rem;
-                            line-height: 1.7;
-                        ">Мониторинг голосовых проходных находится на стадии активной разработки и будет доступен в ближайшее время.</p>
-
-                        <div style="
-                            display: inline-flex;
-                            align-items: center;
-                            gap: 10px;
-                            background: rgba(139,92,246,0.1);
-                            border: 1px solid rgba(139,92,246,0.25);
-                            border-radius: 12px;
-                            padding: 0.75rem 1.5rem;
-                            color: #c084fc;
-                            font-size: 0.9rem;
-                            font-weight: 700;
-                        ">
-                            <i class="fas fa-clock"></i>
-                            Скоро доступно
-                        </div>
-                    </div>
-
-                    <style>
-                        @keyframes wip-pulse {
-                            0%, 100% { box-shadow: 0 0 30px rgba(139,92,246,0.15); transform: translateY(0); }
-                            50% { box-shadow: 0 0 55px rgba(139,92,246,0.35); transform: translateY(-4px); }
-                        }
-                    </style>
-
-                    <!-- СКРЫТАЯ ТАБЛИЦА (старая функциональность) -->
-                    <div style="display:none;">
                     <!-- Карточки статистики -->
                     <div class="lobby-stats-grid">
                         <div class="lobby-stat-card">
@@ -582,8 +509,6 @@ try {
                             </div>
                         </div>
                     </div>
-                    </div>
-                    <!-- /СКРЫТАЯ ТАБЛИЦА -->
 
                 </div>
             </div>
