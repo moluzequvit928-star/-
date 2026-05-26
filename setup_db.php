@@ -98,6 +98,23 @@ try {
             channel_id VARCHAR(50) NOT NULL,
             start_time TIMESTAMP NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        "support_overall_points" => "CREATE TABLE IF NOT EXISTS support_overall_points (
+            discord_id VARCHAR(50) PRIMARY KEY,
+            points DECIMAL(5,2) DEFAULT 0.00
+        )",
+        "support_weekly_scores" => "CREATE TABLE IF NOT EXISTS support_weekly_scores (
+            discord_id VARCHAR(50) NOT NULL,
+            week_date DATE NOT NULL,
+            attended_pt DECIMAL(5,2) DEFAULT NULL,
+            positive_reviews DECIMAL(5,2) DEFAULT 0.00,
+            extra_points DECIMAL(5,2) DEFAULT 0.00,
+            most_active DECIMAL(5,2) DEFAULT 0.00,
+            more_than_12_h DECIMAL(5,2) DEFAULT 0.00,
+            two_branches DECIMAL(5,2) DEFAULT 0.00,
+            night DECIMAL(5,2) DEFAULT 0.00,
+            verif DECIMAL(5,2) DEFAULT 0.00,
+            PRIMARY KEY (discord_id, week_date)
         )"
     ];
 

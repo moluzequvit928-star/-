@@ -87,6 +87,11 @@ try {
                         <i class="fas fa-business-time"></i> <span>Учет ПТ</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="points_calculator.php" class="nav-link <?= $currentPage === 'points_calculator.php' ? 'active' : '' ?>">
+                        <i class="fas fa-calculator"></i> <span>Подсчет баллов</span>
+                    </a>
+                </li>
                 <?php if (in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])): ?>
                 <li class="nav-item">
                     <a href="fortune_wheel.php" class="nav-link <?= $currentPage === 'fortune_wheel.php' ? 'active' : '' ?>">
@@ -120,7 +125,7 @@ try {
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="https://docs.google.com/document/d/1tef_iQ0GuuIVgQRI15Ql8H74BFPjEcI9Cg3qZCQrtL8/edit?usp=drivesdk" target="_blank" class="nav-link">
+                    <a href="interview.php" class="nav-link <?= $currentPage === 'interview.php' ? 'active' : '' ?>">
                         <i class="fas fa-user-check"></i> <span>Собесник саппортов</span>
                     </a>
                 </li>

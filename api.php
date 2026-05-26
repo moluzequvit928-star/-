@@ -551,4 +551,65 @@ if ($action === 'update_pt_override') {
     exit;
 }
 
+if ($action === 'update_overall_points') {
+    if (!in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])) {
+        echo json_encode(['success' => false, 'error' => 'Нет прав']);
+        exit;
+    }
+    
+    $discordId = $_POST['discord_id'] ?? '';
+    $points = $_POST['points'] ?? '';
+    
+    if (!$discordId || $points === '') {
+        echo json_encode(['success' => false, 'error' => 'Недостаточно данных']);
+        exit;
+    }
+    
+    try {
+        $stmt = $pdo->prepare("INSERT INTO support_overall_points (discord_id, points) VALUES (?, ?) 
+                               ON DUPLICATE KEY UPDATE points = VALUES(points)");
+        $stmt->execute([$discordId, floatval(str_replace(',', '.', $points))]);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'update_weekly_score') {
+    if (!in_array($_SESSION['role'] ?? 'master', ['admin', 'chief', 'curator'])) {
+        echo json_encode(['success' => false, 'error' => 'Нет прав']);
+        exit;
+    }
+    
+    $discordId = $_POST['discord_id'] ?? '';
+    $weekDate = $_POST['week_date'] ?? '';
+    $field = $_POST['field'] ?? '';
+    $value = $_POST['value'] ?? '';
+    
+    $validFields = ['attended_pt', 'positive_reviews', 'extra_points', 'most_active', 'more_than_12_h', 'two_branches', 'night', 'verif'];
+    
+    if (!$discordId || !$weekDate || !$field || !in_array($field, $validFields)) {
+        echo json_encode(['success' => false, 'error' => 'Некорректные параметры']);
+        exit;
+    }
+    
+    if ($value === '') {
+        $dbValue = ($field === 'attended_pt') ? null : 0.00;
+    } else {
+        $dbValue = floatval(str_replace(',', '.', $value));
+    }
+    
+    try {
+        $sql = "INSERT INTO support_weekly_scores (discord_id, week_date, `$field`) VALUES (?, ?, ?) 
+                ON DUPLICATE KEY UPDATE `$field` = VALUES(`$field`)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$discordId, $weekDate, $dbValue]);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['success' => true]);

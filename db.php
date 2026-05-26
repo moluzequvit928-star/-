@@ -34,6 +34,29 @@ try {
         )");
     } catch (Exception $e) {}
 
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS support_overall_points (
+            discord_id VARCHAR(50) PRIMARY KEY,
+            points DECIMAL(5,2) DEFAULT 0.00
+        )");
+    } catch (Exception $e) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS support_weekly_scores (
+            discord_id VARCHAR(50) NOT NULL,
+            week_date DATE NOT NULL,
+            attended_pt DECIMAL(5,2) DEFAULT NULL,
+            positive_reviews DECIMAL(5,2) DEFAULT 0.00,
+            extra_points DECIMAL(5,2) DEFAULT 0.00,
+            most_active DECIMAL(5,2) DEFAULT 0.00,
+            more_than_12_h DECIMAL(5,2) DEFAULT 0.00,
+            two_branches DECIMAL(5,2) DEFAULT 0.00,
+            night DECIMAL(5,2) DEFAULT 0.00,
+            verif DECIMAL(5,2) DEFAULT 0.00,
+            PRIMARY KEY (discord_id, week_date)
+        )");
+    } catch (Exception $e) {}
+
 } catch (PDOException $e) {
     // Если базы не существует, попробуем подключиться без нее и создать (только для локалки)
     try {
