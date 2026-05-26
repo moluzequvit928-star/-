@@ -479,7 +479,7 @@ try {
                         </div>
                         <div class="points-info-content">
                             <h3>Spreadsheet-калькулятор баллов саппортов</h3>
-                            <p>Колонка <strong>«Поинты»</strong> отображает общий баланс человека. Столбец <strong>«Отсиженный пт»</strong> автоматически считает сумму <strong>П</strong> из смен за неделю <em>(при отсутствии смен в таблице или для переопределения вы можете отредактировать поле вручную)</em>. Все остальные еженедельные показатели вводятся вручную и обнуляются каждую неделю.</p>
+                            <p>Колонка <strong>«Поинты»</strong> отображает общий баланс человека. Столбец <strong>«Отсиженный пт»</strong> автоматически считает баллы за пшки из смен за неделю <em>(при отсутствии смен в таблице или для переопределения вы можете отредактировать поле вручную)</em>. <strong style="color:#c084fc;">Смены 1–4: 1 пшка = 1.5 балла.</strong> Остальные смены: 1 пшка = 1 балл. Все остальные еженедельные показатели вводятся вручную и обнуляются каждую неделю.</p>
                         </div>
                     </div>
 
@@ -548,7 +548,10 @@ try {
                                             $dbAttendedPt = $weekData['attended_pt'] ?? null;
                                             
                                             // Если в базе нет ручной отметки отсиженного ПТ, берем автоматически подсчитанное из Google Таблицы
-                                            $calculatedPt = $sheetCalculatedPt[$discordId] ?? 0;
+                                            // Смены 1-4: за каждую пшку 1.5 балла, остальные смены: 1 балл
+                                            $shiftNumRaw = (int)preg_replace('/[^0-9]/', '', $s['shift'] ?? '0');
+                                            $pshkaMultiplier = ($shiftNumRaw >= 1 && $shiftNumRaw <= 4) ? 1.5 : 1.0;
+                                            $calculatedPt = round(($sheetCalculatedPt[$discordId] ?? 0) * $pshkaMultiplier, 2);
                                             $effectiveAttendedPt = ($dbAttendedPt !== null) ? floatval($dbAttendedPt) : floatval($calculatedPt);
                                             
                                             $positiveReviews = floatval($weekData['positive_reviews'] ?? 0.00);

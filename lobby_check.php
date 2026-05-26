@@ -5,12 +5,7 @@ if (!isset($_SESSION['user_logged_in']) || $_SESSION['user_logged_in'] !== true)
     exit;
 }
 
-// Проверка прав (только админы, гл. кураторы и кураторы)
-$allowed_roles = ['admin', 'chief', 'curator'];
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], $allowed_roles)) {
-    header('Location: index.php');
-    exit;
-}
+// Доступно всем авторизованным пользователям
 
 require_once 'db.php';
 require_once 'user_header.php';
@@ -555,22 +550,16 @@ try {
             }, 50);
 
             try {
-                const res = await fetch('run_channels.php');
+                const res = await fetch('api_channels.php');
                 
                 // Проверяем HTTP статус
                 if (!res.ok) {
                     clearInterval(progressInterval);
                     grid.innerHTML = `
                         <div style="grid-column: 1/-1; text-align: center; padding: 3rem 1rem;">
-                            <i class="fas fa-robot" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: rgba(167, 139, 250, 0.4);"></i>
-                            <span style="font-size: 1.15rem; display: block; margin-bottom: 0.75rem; font-weight: 800; color: #f1f5f9;">Чек проходных работает только локально</span>
-                            <p style="color: #94a3b8; font-size: 0.9rem; max-width: 420px; margin: 0 auto 1.5rem auto; line-height: 1.6;">
-                                Для проверки состояния комнат необходимо запустить сайт локально (<code style="background:rgba(255,255,255,0.07); padding:2px 6px; border-radius:4px;">start_localhost.bat</code>) 
-                                и запустить селф-бота (<code style="background:rgba(255,255,255,0.07); padding:2px 6px; border-radius:4px;">start_bot.bat</code>).
-                            </p>
-                            <div style="display:inline-flex; gap:8px; align-items:center; background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:12px; padding:0.6rem 1.2rem; color:#f87171; font-size:0.82rem;">
-                                <i class="fas fa-circle-xmark"></i> Ошибка ${res.status}: сервер недоступен
-                            </div>
+                            <i class="fas fa-database" style="font-size: 3rem; margin-bottom: 1rem; display: block; color: rgba(167, 139, 250, 0.4);"></i>
+                            <span style="font-size: 1.15rem; display: block; margin-bottom: 0.75rem; font-weight: 800; color: #f1f5f9;">Ошибка подключения к БД</span>
+                            <p style="color: #94a3b8; font-size: 0.9rem; max-width: 400px; margin: 0 auto;">Ошибка ${res.status}: не удалось получить данные.</p>
                         </div>`;
                     return;
                 }
@@ -623,12 +612,18 @@ try {
 
                     let usersHtml = '';
                     if (busy) {
-                        usersHtml = ch.members.map(m => `
+                        usersHtml = ch.members.map(m => {
+                            const since = m.since ? (() => {
+                                const diff = Math.round((Date.now() - new Date(m.since.replace(' ', 'T')).getTime()) / 60000);
+                                return diff > 0 ? `<span style="font-size:0.7rem; color:#64748b; margin-left:4px;">${diff} мин.</span>` : '';
+                            })() : '';
+                            return `
                             <div class="room-user-item" title="${m.tag}">
                                 <img class="room-user-avatar" src="${m.avatar}" alt=""
                                      onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-                                <span class="room-user-tag">${m.tag}</span>
-                            </div>`).join('');
+                                <span class="room-user-tag">${m.tag}${since}</span>
+                            </div>`;
+                        }).join('');
                     } else {
                         usersHtml = '<p class="placeholder-text">Комната пуста</p>';
                     }
@@ -654,6 +649,20 @@ try {
                 document.getElementById('statTotalUsers').textContent = totalUsers;
                 document.getElementById('statActiveRooms').textContent = activeCount;
                 document.getElementById('statEmptyRooms').textContent = emptyCount;
+
+                // Показываем время последнего обновления
+                if (data.last_update) {
+                    const lu = new Date(data.last_update.replace(' ', 'T'));
+                    const mins = Math.round((Date.now() - lu.getTime()) / 60000);
+                    const luText = mins <= 0 ? 'только что' : `${mins} мин. назад`;
+                    const existingBadge = document.getElementById('lastUpdateBadge');
+                    if (existingBadge) existingBadge.remove();
+                    const badge = document.createElement('div');
+                    badge.id = 'lastUpdateBadge';
+                    badge.style.cssText = 'display:inline-flex; gap:6px; align-items:center; background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.2); border-radius:10px; padding:0.4rem 1rem; color:#4ade80; font-size:0.78rem; margin-top:1rem;';
+                    badge.innerHTML = `<i class="fas fa-circle-dot" style="animation:pulse 2s infinite;"></i> Бот обновил данные: ${luText}`;
+                    document.getElementById('lobbyGrid').parentElement.appendChild(badge);
+                }
 
             } catch (e) {
                 console.error(e);
