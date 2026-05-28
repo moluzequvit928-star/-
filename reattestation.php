@@ -106,11 +106,19 @@ if ($role !== 'admin' && $role !== 'chief' && $role !== 'curator') {
                 </div>
 
                 <div class="reattestation-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
                         <h2 style="margin: 0; font-size: 1.1rem; letter-spacing: 0.5px;">Список саппортов</h2>
-                        <button onclick="loadQueue()" class="refresh-btn" title="Обновить список">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                        </button>
+                        <div style="display: flex; align-items: center; gap: 0.6rem; flex: 1; justify-content: flex-end; min-width: 220px;">
+                            <div style="position: relative; flex: 1; max-width: 320px;">
+                                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748B; font-size: 0.8rem;"></i>
+                                <input type="text" id="searchInput" placeholder="Поиск по ID или нику..." autocomplete="off"
+                                    oninput="applySearch()"
+                                    style="width: 100%; padding: 0.6rem 0.8rem 0.6rem 2.2rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15,23,42,0.6); color: #F8FAFC; font-size: 0.85rem; outline: none;">
+                            </div>
+                            <button onclick="loadQueue()" class="refresh-btn" title="Обновить список">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -146,66 +154,99 @@ if ($role !== 'admin' && $role !== 'chief' && $role !== 'curator') {
         const normalize = (str) => (str || "").toLowerCase().replace(/_/g, '').trim();
         const userNameNormalized = normalize("<?php echo $_SESSION['username']; ?>");
 
+        // Здесь храним список, отфильтрованный по роли (без учёта строки поиска)
+        let currentQueue = [];
+
+        function isOverdue(item) {
+            const targetDate = parseRuDate(item.date);
+            if (!targetDate) return false;
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            return (targetDate - now) < 0;
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total').innerText = currentQueue.length;
+            document.getElementById('stat-overdue').innerText = currentQueue.filter(isOverdue).length;
+        }
+
+        function renderQueue(items) {
+            const list = document.getElementById('reattestation-list');
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+
+            list.innerHTML = items.map(item => {
+                let dateHtml = '<span style="color: #64748B;">—</span>';
+                const targetDate = parseRuDate(item.date);
+
+                if (targetDate) {
+                    const diffTime = targetDate - now;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (diffDays < 0) {
+                        dateHtml = `<div class="date-badge date-overdue">Просрочено ${Math.abs(diffDays)} д.</div>`;
+                    } else if (diffDays === 0) {
+                        dateHtml = `<div class="date-badge date-today">Сегодня</div>`;
+                    } else {
+                        dateHtml = `<div class="date-badge date-upcoming">Через ${diffDays} д.</div>`;
+                    }
+                    dateHtml += `<div style="font-size: 0.7rem; color: #64748B; margin-top: 4px;">План: ${item.date}</div>`;
+                }
+
+                return `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 700;">${item.nickname}</div>
+                            <div style="font-size: 0.7rem; color: #64748B;">ID: ${item.id}</div>
+                        </td>
+                        <td>${dateHtml}</td>
+                        <td><span style="font-weight: 800; color: ${item.attempt_count.startsWith('1') ? '#10B981' : item.attempt_count.startsWith('2') ? '#F59E0B' : '#EF4444'}">${item.attempt_count}</span></td>
+                        <td><span class="badge-curator">${item.curator}</span></td>
+                        <td style="text-align: right;"><a href="conduct.php?id=${item.id}&nick=${encodeURIComponent(item.nickname)}" class="btn-start">Начать проверку</a></td>
+                    </tr>`;
+            }).join('');
+
+            if (items.length === 0) {
+                const q = (document.getElementById('searchInput').value || '').trim();
+                const msg = q
+                    ? `Ничего не найдено по запросу «${q}»`
+                    : 'Для вас нет назначенных переаттестаций';
+                list.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 3rem; color: #64748B;">${msg}</td></tr>`;
+            }
+        }
+
+        function applySearch() {
+            const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+            if (!q) {
+                renderQueue(currentQueue);
+                return;
+            }
+            const filtered = currentQueue.filter(item =>
+                String(item.id).toLowerCase().includes(q) ||
+                String(item.nickname).toLowerCase().includes(q)
+            );
+            renderQueue(filtered);
+        }
+
         function loadQueue() {
             const list = document.getElementById('reattestation-list');
             list.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 3rem;">Загрузка данных...</td></tr>';
-            
+
             fetch('api.php?action=reattestation_queue&t=' + Date.now())
                 .then(r => r.json())
                 .then(res => {
                     if (res.success) {
-                        // ФИЛЬТРАЦИЯ: Админ видит всех, кураторы - только своих
-                        let filteredData = res.data;
                         // ФИЛЬТРАЦИЯ: Админ и Гл. куратор видят всех, кураторы - только своих
+                        let filteredData = res.data;
                         if (userRole !== 'admin' && userRole !== 'chief') {
                             filteredData = res.data.filter(item => {
                                 return normalize(item.curator) === userNameNormalized;
                             });
                         }
 
-                        const now = new Date();
-                        now.setHours(0,0,0,0);
-                        
-                        let overdueCount = 0;
-
-                        list.innerHTML = filteredData.map(item => {
-                            let dateHtml = '<span style="color: #64748B;">—</span>';
-                            const targetDate = parseRuDate(item.date);
-                            
-                            if (targetDate) {
-                                const diffTime = targetDate - now;
-                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                
-                                if (diffDays < 0) {
-                                    dateHtml = `<div class="date-badge date-overdue">Просрочено ${Math.abs(diffDays)} д.</div>`;
-                                    overdueCount++;
-                                } else if (diffDays === 0) {
-                                    dateHtml = `<div class="date-badge date-today">Сегодня</div>`;
-                                } else {
-                                    dateHtml = `<div class="date-badge date-upcoming">Через ${diffDays} д.</div>`;
-                                }
-                                dateHtml += `<div style="font-size: 0.7rem; color: #64748B; margin-top: 4px;">План: ${item.date}</div>`;
-                            }
-
-                            return `
-                                <tr>
-                                    <td>
-                                        <div style="font-weight: 700;">${item.nickname}</div>
-                                        <div style="font-size: 0.7rem; color: #64748B;">ID: ${item.id}</div>
-                                    </td>
-                                    <td>${dateHtml}</td>
-                                    <td><span style="font-weight: 800; color: ${item.attempt_count.startsWith('1') ? '#10B981' : item.attempt_count.startsWith('2') ? '#F59E0B' : '#EF4444'}">${item.attempt_count}</span></td>
-                                    <td><span class="badge-curator">${item.curator}</span></td>
-                                    <td style="text-align: right;"><a href="conduct.php?id=${item.id}&nick=${encodeURIComponent(item.nickname)}" class="btn-start">Начать проверку</a></td>
-                                </tr>`;
-                        }).join('');
-
-                        document.getElementById('stat-total').innerText = filteredData.length;
-                        document.getElementById('stat-overdue').innerText = overdueCount;
-
-                        if (filteredData.length === 0) {
-                            list.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 3rem; color: #64748B;">Для вас нет назначенных переаттестаций</td></tr>';
-                        }
+                        currentQueue = filteredData;
+                        updateStats();   // счётчики — по всему списку
+                        applySearch();   // таблица — с учётом строки поиска
                     }
                 });
         }
