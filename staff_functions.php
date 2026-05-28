@@ -202,18 +202,25 @@ function getReattestationQueue($pdo)
         // Если человек уже в базе как сдавший сегодня — пропускаем
         if (in_array($id, $doneToday)) continue;
 
-        $status = mb_strtolower($row[7] ?? '');
-        if (mb_strpos($status, 'сдал') !== false) continue;
+        $status = mb_strtolower(trim($row[7] ?? ''));
+        $attempt = trim($row[8] ?? '');
 
-        if ($status === '' || $status === '-' || $status === '—' || $status === 'нет') {
-            $queue[] = [
-                'nickname' => $nick,
-                'id' => $id,
-                'date' => $row[5] ?? '',
-                'curator' => ($row[6] ?? '') ?: 'Не назначен',
-                'attempt_count' => ($row[8] ?? '') ?: '1'
-            ];
-        }
+        // Прошёл переаттестацию — убираем из очереди.
+        // ВАЖНО: "не сдал" содержит подстроку "сдал", поэтому проверяем точное значение / "прошел".
+        $passed = ($status === 'сдал' || mb_strpos($status, 'прошел') !== false);
+        if ($passed) continue;
+
+        // Исчерпал все попытки (3/3) — тоже убираем из очереди.
+        if (mb_strpos($attempt, '3/3') !== false) continue;
+
+        // Остаются: ещё не проверенные ('-' / пусто) и провалившие, у кого есть попытки (1/3, 2/3).
+        $queue[] = [
+            'nickname' => $nick,
+            'id' => $id,
+            'date' => $row[5] ?? '',
+            'curator' => ($row[6] ?? '') ?: 'Не назначен',
+            'attempt_count' => ($attempt !== '' && $attempt !== '-' && $attempt !== '—') ? $attempt : '1/3'
+        ];
     }
     return $queue;
 }

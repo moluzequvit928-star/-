@@ -49,10 +49,26 @@ if ($action === 'set_reattestation_result') {
         $stmt = $pdo->prepare("INSERT INTO reattestations (discord_id, discord_nickname, curator, result, answers_json) VALUES (?, ?, ?, ?, ?)");
         $stmt->execute([$discordId, $nickname, $curator, $result, $answersJson]);
 
+        // Определяем результат и номер попытки для записи в таблицу.
+        // ВАЖНО: "не сдал" содержит подстроку "сдал", поэтому проверяем наличие "не" отдельно.
+        $normResult = mb_strtolower(trim($result));
+        $isPass = (mb_strpos($normResult, 'не') === false && mb_strpos($normResult, 'сдал') !== false);
+
+        // Номер попытки = количество проваленных переаттестаций этого человека (включая текущую).
+        $attemptNum = 1;
+        try {
+            $cnt = $pdo->prepare("SELECT COUNT(*) FROM reattestations WHERE discord_id = ? AND result LIKE '%не%сдал%'");
+            $cnt->execute([$discordId]);
+            $attemptNum = max(1, (int) $cnt->fetchColumn());
+        } catch (Exception $e) {}
+
+        $statusLabel  = $isPass ? 'сдал' : 'не сдал';                      // колонка H (Сдал/Не сдал)
+        $attemptLabel = $isPass ? 'прошел' : (min($attemptNum, 3) . '/3'); // колонка I (Попытка)
+
         $webhook = configValue('APP_SCRIPT_WEBHOOK_URL', 'app_script_webhook_url');
         if ($webhook) {
             $webhookToken = configValue('APP_SCRIPT_WEBHOOK_TOKEN', 'app_script_webhook_token');
-            $payload = ['token' => $webhookToken, 'action' => 'update_reattestation', 'discord_id' => $discordId, 'result' => $result, 'curator' => $curator];
+            $payload = ['token' => $webhookToken, 'action' => 'update_reattestation', 'discord_id' => $discordId, 'result' => $result, 'status' => $statusLabel, 'attempt' => $attemptLabel, 'curator' => $curator];
             $webhookUrl = $webhook . (strpos($webhook, '?') === false ? '?' : '&') . 'token=' . $webhookToken . '&action=' . $action;
             $ch = curl_init($webhookUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
