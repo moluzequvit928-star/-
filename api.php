@@ -79,12 +79,21 @@ if ($action === 'set_reattestation_result') {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
             $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $effUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
             curl_close($ch);
 
             $resultData = json_decode($response, true);
             if (!$resultData || !isset($resultData['ok']) || $resultData['ok'] !== true) {
-                $errorMsg = $resultData['error'] ?? "Неизвестная ошибка Google Script";
-                throw new Exception($errorMsg);
+                if (isset($resultData['error'])) {
+                    // Google ответил валидным JSON с ошибкой (например "ID не найден")
+                    throw new Exception($resultData['error']);
+                }
+                // Ответ не JSON — показываем диагностику прямо в ошибке
+                $isLogin = (strpos((string) $effUrl, 'accounts.google.com') !== false) ? ' [РЕДИРЕКТ НА ЛОГИН GOOGLE → доступ деплоя НЕ «Все»]' : '';
+                $raw = trim(strip_tags((string) $response));
+                if (mb_strlen($raw) > 200) $raw = mb_substr($raw, 0, 200) . '…';
+                throw new Exception("Google вернул не JSON (HTTP $httpCode)$isLogin. URL: ..." . substr((string) $webhook, -22) . ". Ответ: " . $raw);
             }
 
             if (isset($_SESSION['discord_id'])) {
