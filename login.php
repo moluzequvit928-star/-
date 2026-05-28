@@ -8,6 +8,11 @@ if (isset($_SESSION['user_logged_in']) && $_SESSION['user_logged_in'] === true) 
 }
 
 $error = '';
+// Ошибка, переданная из discord_login.php
+if (!empty($_SESSION['discord_login_error'])) {
+    $error = $_SESSION['discord_login_error'];
+    unset($_SESSION['discord_login_error']);
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
@@ -150,6 +155,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px var(--accent-glow);
         }
+        .discord-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 13px;
+            background: #5865F2;
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+        .discord-btn:hover {
+            background: #4752c4;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(88, 101, 242, 0.3);
+        }
+        .discord-btn i { font-size: 1.2rem; }
         .error-msg {
             background: rgba(239, 68, 68, 0.1);
             color: #ef4444;
@@ -194,6 +222,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ВОЙТИ В СИСТЕМУ
             </button>
         </form>
+
+        <div style="display:flex; align-items:center; gap:12px; margin:1.5rem 0; color:#475569; font-size:0.75rem;">
+            <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+            ИЛИ
+            <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+        </div>
+
+        <a href="discord_login.php" class="discord-btn">
+            <i class="fab fa-discord"></i> Войти через Discord
+        </a>
 
         <div style="margin-top: 2rem; text-align: center;">
             <p style="color: #475569; font-size: 0.75rem;">Powered by Futurama Staff System</p>
