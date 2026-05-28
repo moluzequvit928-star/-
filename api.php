@@ -7,6 +7,7 @@ ini_set('display_errors', 0);
 
 require_once 'db.php';
 require_once 'staff_functions.php';
+require_once 'pet_functions.php';
 
 $appConfig = getAppConfig();
 $apiToken = $appConfig['bot_api_token'] ?? 'futika_bot_secret_2026';
@@ -26,6 +27,186 @@ if (empty($action)) {
 
 if ($action === 'reattestation_queue') {
     echo json_encode(['success' => true, 'data' => getReattestationQueue($pdo)]);
+    exit;
+}
+
+// === ПИТОМЕЦ: получить данные текущего пользователя ===
+if ($action === 'pet_get') {
+    $discordId = $_SESSION['discord_id'] ?? '';
+    $role = $_SESSION['role'] ?? 'master';
+    if (!$discordId) { echo json_encode(['success' => false, 'error' => 'not_logged_in']); exit; }
+
+    $stmt = $pdo->prepare("SELECT * FROM pets WHERE discord_id = ?");
+    $stmt->execute([$discordId]);
+    $pet = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$pet) {
+        echo json_encode(['success' => true, 'has_pet' => false, 'types' => petTypes()]);
+        exit;
+    }
+
+    $info = petLevelInfo($pet['xp']);
+    $canFeed = (($pet['last_fed'] ?? null) !== date('Y-m-d'));
+    echo json_encode([
+        'success'  => true,
+        'has_pet'  => true,
+        'pet'      => [
+            'type'  => $pet['pet_type'],
+            'name'  => $pet['pet_name'],
+            'emoji' => petEmoji($pet['pet_type']),
+            'xp'    => (int) $pet['xp'],
+        ],
+        'level'    => $info,
+        'can_feed' => $canFeed,
+        'quests'   => petGetUserQuests($pdo, $discordId, $role),
+        'is_admin' => ($role === 'admin'),
+        'types'    => petTypes(),
+    ]);
+    exit;
+}
+
+// === ПИТОМЕЦ: покормить (раз в день, бонусный XP) ===
+if ($action === 'pet_feed') {
+    $discordId = $_SESSION['discord_id'] ?? '';
+    if (!$discordId) { echo json_encode(['success' => false, 'error' => 'not_logged_in']); exit; }
+    $FEED_XP = 30;
+    try {
+        $stmt = $pdo->prepare("SELECT last_fed FROM pets WHERE discord_id = ?");
+        $stmt->execute([$discordId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) { echo json_encode(['success' => false, 'error' => 'no_pet']); exit; }
+        if (($row['last_fed'] ?? null) === date('Y-m-d')) {
+            echo json_encode(['success' => false, 'error' => 'already_fed']);
+            exit;
+        }
+        $pdo->prepare("UPDATE pets SET xp = xp + ?, last_fed = CURDATE() WHERE discord_id = ?")
+            ->execute([$FEED_XP, $discordId]);
+        echo json_encode(['success' => true, 'xp_gained' => $FEED_XP]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// === ПИТОМЕЦ: лидерборд ===
+if ($action === 'pet_leaderboard') {
+    echo json_encode(['success' => true, 'top' => petLeaderboard($pdo, 15)]);
+    exit;
+}
+
+// === ДОСТИЖЕНИЯ ===
+if ($action === 'achievements_get') {
+    $discordId = $_SESSION['discord_id'] ?? '';
+    $role = $_SESSION['role'] ?? 'master';
+    if (!$discordId) { echo json_encode(['success' => false, 'error' => 'not_logged_in']); exit; }
+    echo json_encode(['success' => true, 'achievements' => petCheckAchievements($pdo, $discordId, $role)]);
+    exit;
+}
+
+// === ПИТОМЕЦ: завести / переименовать ===
+if ($action === 'pet_create') {
+    $discordId = $_SESSION['discord_id'] ?? '';
+    $name = $_SESSION['username'] ?? '';
+    if (!$discordId) { echo json_encode(['success' => false, 'error' => 'not_logged_in']); exit; }
+
+    $type = $_POST['pet_type'] ?? 'dog';
+    $petName = trim($_POST['pet_name'] ?? '');
+    if (!array_key_exists($type, petTypes())) $type = 'dog';
+    if ($petName === '') $petName = 'Питомец';
+    if (mb_strlen($petName) > 50) $petName = mb_substr($petName, 0, 50);
+
+    try {
+        $pdo->prepare(
+            "INSERT INTO pets (discord_id, owner_name, pet_type, pet_name) VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE pet_type = VALUES(pet_type), pet_name = VALUES(pet_name)"
+        )->execute([$discordId, $name, $type, $petName]);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// === КВЕСТЫ: список всех (только админ) ===
+if ($action === 'quest_list_admin') {
+    if (($_SESSION['role'] ?? '') !== 'admin') { echo json_encode(['success' => false, 'error' => 'forbidden']); exit; }
+    $rows = $pdo->query("SELECT * FROM pet_quests ORDER BY is_active DESC, created_at DESC")->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['success' => true, 'quests' => $rows]);
+    exit;
+}
+
+// === КВЕСТЫ: создать (только админ) ===
+if ($action === 'quest_create') {
+    if (($_SESSION['role'] ?? '') !== 'admin') { echo json_encode(['success' => false, 'error' => 'forbidden']); exit; }
+    $title = trim($_POST['title'] ?? '');
+    $desc = trim($_POST['description'] ?? '');
+    $reward = max(1, (int) ($_POST['xp_reward'] ?? 50));
+    $kind = $_POST['kind'] ?? 'custom';
+    $role = $_POST['target_role'] ?? 'all';
+    $goal = max(1, (int) ($_POST['goal_count'] ?? 1));
+    $allowedKinds = ['custom', 'reattestation', 'add_support'];
+    $allowedRoles = ['all', 'master', 'curator', 'chief', 'admin'];
+    if (!in_array($kind, $allowedKinds)) $kind = 'custom';
+    if (!in_array($role, $allowedRoles)) $role = 'all';
+    if ($title === '') { echo json_encode(['success' => false, 'error' => 'Укажите название']); exit; }
+
+    try {
+        $pdo->prepare(
+            "INSERT INTO pet_quests (title, description, xp_reward, kind, target_role, goal_count, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )->execute([$title, $desc, $reward, $kind, $role, $goal, $_SESSION['username'] ?? 'admin']);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// === КВЕСТЫ: вкл/выкл или удалить (только админ) ===
+if ($action === 'quest_toggle') {
+    if (($_SESSION['role'] ?? '') !== 'admin') { echo json_encode(['success' => false, 'error' => 'forbidden']); exit; }
+    $id = (int) ($_POST['id'] ?? 0);
+    $pdo->prepare("UPDATE pet_quests SET is_active = 1 - is_active WHERE id = ?")->execute([$id]);
+    echo json_encode(['success' => true]);
+    exit;
+}
+if ($action === 'quest_delete') {
+    if (($_SESSION['role'] ?? '') !== 'admin') { echo json_encode(['success' => false, 'error' => 'forbidden']); exit; }
+    $id = (int) ($_POST['id'] ?? 0);
+    $pdo->prepare("DELETE FROM pet_quests WHERE id = ?")->execute([$id]);
+    $pdo->prepare("DELETE FROM pet_quest_progress WHERE quest_id = ?")->execute([$id]);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// === КВЕСТЫ: админ вручную выдаёт награду за custom-квест пользователю ===
+if ($action === 'quest_award') {
+    if (($_SESSION['role'] ?? '') !== 'admin') { echo json_encode(['success' => false, 'error' => 'forbidden']); exit; }
+    $questId = (int) ($_POST['quest_id'] ?? 0);
+    $targetId = trim($_POST['discord_id'] ?? '');
+    if (!$questId || !$targetId) { echo json_encode(['success' => false, 'error' => 'Нужны quest_id и discord_id']); exit; }
+
+    $q = $pdo->prepare("SELECT * FROM pet_quests WHERE id = ?");
+    $q->execute([$questId]);
+    $quest = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$quest) { echo json_encode(['success' => false, 'error' => 'Квест не найден']); exit; }
+
+    // проверяем, что у пользователя есть питомец
+    $chk = $pdo->prepare("SELECT discord_id FROM pets WHERE discord_id = ?");
+    $chk->execute([$targetId]);
+    if (!$chk->fetch()) { echo json_encode(['success' => false, 'error' => 'У пользователя нет питомца']); exit; }
+
+    try {
+        $pdo->prepare(
+            "INSERT INTO pet_quest_progress (quest_id, discord_id, progress, completed, rewarded)
+             VALUES (?, ?, ?, 1, 1)
+             ON DUPLICATE KEY UPDATE completed = 1, rewarded = 1, progress = VALUES(progress)"
+        )->execute([$questId, $targetId, (int) $quest['goal_count']]);
+        petAwardXp($pdo, $targetId, (int) $quest['xp_reward']);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
     exit;
 }
 
@@ -102,6 +283,15 @@ if ($action === 'set_reattestation_result') {
                 $pdo->prepare("UPDATE users SET reattestations_count = reattestations_count + 1 WHERE discord_id = ?")->execute([$_SESSION['discord_id']]);
             }
         }
+
+        // 🐾 Питомец: куратор получает XP за проведённую переаттестацию + прогресс квестов
+        $myId = $_SESSION['discord_id'] ?? '';
+        $myRole = $_SESSION['role'] ?? 'curator';
+        if ($myId) {
+            petAwardXp($pdo, $myId, 20);
+            petAdvanceQuests($pdo, $myId, 'reattestation', $myRole, 1);
+        }
+
         echo json_encode(['success' => true]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage()]);
@@ -154,6 +344,12 @@ if ($action === 'add_support') {
                     $pdo->prepare("UPDATE users SET added_supports_count = added_supports_count + 1 WHERE discord_id = ?")->execute([$_SESSION['discord_id']]);
                 } catch (Exception $e) {
                 }
+
+                // 🐾 Питомец: мастер получает XP за добавленного саппорта + прогресс квестов
+                $myId = $_SESSION['discord_id'];
+                $myRole = $_SESSION['role'] ?? 'master';
+                petAwardXp($pdo, $myId, 15);
+                petAdvanceQuests($pdo, $myId, 'add_support', $myRole, 1);
             }
         } else {
             $keys = is_array($appConfig) ? implode(', ', array_keys($appConfig)) : 'not an array';
@@ -167,7 +363,7 @@ if ($action === 'add_support') {
 }
 
 if ($action === 'get_all_supports') {
-    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));
+    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '2053240546'));
     $rows = loadCsvRows($csvUrl);
     $supports = [];
     $activeWarnings = [];
@@ -242,8 +438,9 @@ if ($action === 'upload_media') {
         exit;
     }
 
-    $target = $_POST['target'] ?? 'banner'; 
-    $uploadDir = __DIR__ . ($target === 'avatar' ? '/uploads/avatars/' : '/uploads/banners/');
+    $target = $_POST['target'] ?? 'banner';
+    $subDir = $target === 'avatar' ? 'uploads/avatars/' : ($target === 'wallpaper' ? 'uploads/wallpapers/' : 'uploads/banners/');
+    $uploadDir = __DIR__ . '/' . $subDir;
     if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
     $finalUrl = '';
@@ -252,9 +449,9 @@ if ($action === 'upload_media') {
         $ext = pathinfo($_FILES['media_file']['name'], PATHINFO_EXTENSION);
         $fileName = $discord_id . '_' . time() . '.' . $ext;
         if (move_uploaded_file($_FILES['media_file']['tmp_name'], $uploadDir . $fileName)) {
-            $finalUrl = ($target === 'avatar' ? 'uploads/avatars/' : 'uploads/banners/') . $fileName;
+            $finalUrl = $subDir . $fileName;
         }
-    } 
+    }
     elseif (isset($_POST['media_base64']) && !empty($_POST['media_base64'])) {
         $data = $_POST['media_base64'];
         if (preg_match('/^data:image\/(\w+);base64,/', $data, $type)) {
@@ -263,7 +460,7 @@ if ($action === 'upload_media') {
             $data = base64_decode($data);
             $fileName = $discord_id . '_' . time() . '.' . $type;
             if (file_put_contents($uploadDir . $fileName, $data)) {
-                $finalUrl = ($target === 'avatar' ? 'uploads/avatars/' : 'uploads/banners/') . $fileName;
+                $finalUrl = $subDir . $fileName;
             }
         }
     }
@@ -426,6 +623,36 @@ if ($action === 'master_details') {
         ]);
     } else {
         echo json_encode(['success' => false, 'error' => 'Master not found in sheet']);
+    }
+    exit;
+}
+
+// === ДАБЛ-СТАФФ: приём результатов от чекера (селф-бот) ===
+if ($action === 'update_doublestaff') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $token = $data['token'] ?? '';
+    if ($token !== $apiToken) {
+        echo json_encode(['success' => false, 'error' => 'Invalid token']);
+        exit;
+    }
+    $results = $data['results'] ?? [];
+    try {
+        // Полная замена: чекер присылает актуальный полный список
+        $pdo->exec("DELETE FROM double_staff");
+        $ins = $pdo->prepare("INSERT INTO double_staff (discord_id, username, guild_name, role_name) VALUES (?, ?, ?, ?)");
+        $count = 0;
+        foreach ($results as $r) {
+            $did = (string) ($r['discord_id'] ?? '');
+            $uname = $r['username'] ?? null;
+            if ($did === '') continue;
+            foreach (($r['entries'] ?? []) as $e) {
+                $ins->execute([$did, $uname, mb_substr((string)($e['guild'] ?? ''), 0, 150), mb_substr((string)($e['role'] ?? ''), 0, 150)]);
+                $count++;
+            }
+        }
+        echo json_encode(['success' => true, 'inserted' => $count]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
     exit;
 }

@@ -72,5 +72,25 @@ $sidebarPendingCount = 0;
 
         const savedScale = localStorage.getItem('site_scale') || 'normal';
         document.documentElement.setAttribute('data-scale', savedScale);
+
+        // Кастомный акцентный цвет (палитра)
+        const accent = localStorage.getItem('site_accent');
+        if (accent) {
+            const r = document.documentElement.style;
+            r.setProperty('--accent', accent);
+            r.setProperty('--accent-glow', accent + '73'); // ~0.45 прозрачности
+            r.setProperty('--gradient-primary', 'linear-gradient(135deg, ' + accent + ' 0%, #3b82f6 100%)');
+        }
+
+        // Кастомные обои (картинка или градиент-пресет)
+        const wp = localStorage.getItem('site_wallpaper');
+        if (wp) {
+            const isGrad = /^(linear-gradient|radial-gradient|conic-gradient)/i.test(wp);
+            const img = isGrad ? wp : 'url("' + wp.replace(/["\\]/g, '') + '")';
+            const st = document.createElement('style');
+            st.id = 'customWallpaperStyle';
+            st.textContent = 'body{background-image:' + img + '!important;background-size:cover!important;background-attachment:fixed!important;background-position:center!important;}';
+            document.head.appendChild(st);
+        }
     })();
 </script>
