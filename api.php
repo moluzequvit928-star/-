@@ -62,7 +62,9 @@ if ($action === 'set_reattestation_result') {
             $attemptNum = max(1, (int) $cnt->fetchColumn());
         } catch (Exception $e) {}
 
-        $statusLabel  = $isPass ? 'сдал' : 'не сдал';                      // колонка H (Сдал/Не сдал)
+        // Значения должны ТОЧНО совпадать с выпадающим списком в колонке H ("сдал" / "Не сдал" / "-"),
+        // иначе Google Таблица отклонит запись по правилам проверки данных.
+        $statusLabel  = $isPass ? 'сдал' : 'Не сдал';                      // колонка H (Сдал/Не сдал)
         $attemptLabel = $isPass ? 'прошел' : (min($attemptNum, 3) . '/3'); // колонка I (Попытка)
 
         $webhook = configValue('APP_SCRIPT_WEBHOOK_URL', 'app_script_webhook_url');
