@@ -551,10 +551,36 @@ if ($action === 'get_user_stats') {
     exit;
 }
 
+// === Список стафа для чекера дабл-стаффа (id + ник из таблицы состава/смен) ===
+if ($action === 'get_staff_ids') {
+    $token = $_GET['token'] ?? '';
+    if ($token !== $apiToken) {
+        echo json_encode(['success' => false, 'error' => 'Invalid token']);
+        exit;
+    }
+    try {
+        $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '2053240546'));
+        $rows = loadCsvRows($csvUrl, 120);
+        $staff = [];
+        foreach ($rows as $row) {
+            $nick = trim((string) ($row[2] ?? ''));
+            $id = preg_replace('/[^0-9]/', '', (string) ($row[3] ?? ''));
+            if ($id === '' || $nick === '' || $nick === 'Никнейм' || mb_stripos($nick, 'смена') !== false) continue;
+            $staff[$id] = $nick; // уникальность по id
+        }
+        $out = [];
+        foreach ($staff as $id => $nick) $out[] = ['id' => $id, 'username' => $nick];
+        echo json_encode(['success' => true, 'staff' => $out]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($action === 'bot_profile') {
     $discordId = $_GET['discord_id'] ?? '';
     $token = $_GET['token'] ?? '';
-    
+
     // Простая проверка токена
     if ($token !== $apiToken) {
         echo json_encode(['success' => false, 'error' => 'Invalid token']);

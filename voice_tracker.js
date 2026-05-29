@@ -44,35 +44,55 @@ function isStaffRole(name) {
 }
 function dsSleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+const STAFF_URL = `${API_BASE}/api.php?action=get_staff_ids&token=${API_TOKEN}`;
+
 async function runDoubleStaffScan() {
     try {
-        const mainGuild = client.guilds.cache.get(GUILD_ID);
-        if (!mainGuild) return;
-        await mainGuild.members.fetch().catch(() => {});
+        console.log('🔎 [DS] Запускаю скан дабл-стаффа...');
+        console.log(`🔎 [DS] Аккаунт состоит в ${client.guilds.cache.size} серверах`);
 
-        const staff = new Map(); // id -> username
-        mainGuild.members.cache.forEach(m => {
-            if (m.roles.cache.has(SUPPORT_ROLE_ID)) staff.set(m.id, m.user.username);
-        });
-        if (staff.size === 0) return;
+        // 1) Список стафа берём с САЙТА (а не качаем 133к участников Discord)
+        let staffList = [];
+        try {
+            const r = await axios.get(STAFF_URL);
+            if (r.data && r.data.success) staffList = r.data.staff || [];
+        } catch (e) {
+            console.error('❌ [DS] Не смог получить список стафа с сайта:', e.message);
+            return;
+        }
+        console.log(`👥 [DS] Стафа из таблицы: ${staffList.length}`);
+        if (staffList.length === 0) {
+            console.warn('⚠️ [DS] Пустой список стафа — проверь, что таблица состава отдаётся (get_staff_ids).');
+            return;
+        }
+
+        const staffIds = staffList.map(s => String(s.id));
+        const nameById = {};
+        staffList.forEach(s => { nameById[String(s.id)] = s.username; });
 
         const found = new Map();
         const otherGuilds = client.guilds.cache.filter(g => g.id !== GUILD_ID);
+        console.log(`🌐 [DS] Проверяю ${otherGuilds.size} других серверов...`);
 
         for (const [, guild] of otherGuilds) {
-            try { await guild.members.fetch(); } catch (e) { continue; }
-            for (const [id, username] of staff) {
-                const member = guild.members.cache.get(id);
-                if (!member) continue;
-                const staffRoles = member.roles.cache
-                    .filter(r => r.name !== '@everyone' && isStaffRole(r.name))
-                    .map(r => r.name);
-                if (staffRoles.length > 0) {
-                    if (!found.has(id)) found.set(id, { discord_id: id, username, entries: [] });
-                    staffRoles.forEach(rn => found.get(id).entries.push({ guild: guild.name, role: rn }));
-                }
+            // запрашиваем ТОЛЬКО наших стафферов по ID, батчами по 100
+            for (let i = 0; i < staffIds.length; i += 100) {
+                const chunk = staffIds.slice(i, i + 100);
+                let members;
+                try { members = await guild.members.fetch({ user: chunk }); }
+                catch (e) { continue; }
+                members.forEach(member => {
+                    const staffRoles = member.roles.cache
+                        .filter(r => r.name !== '@everyone' && isStaffRole(r.name))
+                        .map(r => r.name);
+                    if (staffRoles.length > 0) {
+                        const id = member.id;
+                        if (!found.has(id)) found.set(id, { discord_id: id, username: nameById[id] || member.user.username, entries: [] });
+                        staffRoles.forEach(rn => found.get(id).entries.push({ guild: guild.name, role: rn }));
+                    }
+                });
+                await dsSleep(800);
             }
-            await dsSleep(1500);
         }
 
         const results = Array.from(found.values());
