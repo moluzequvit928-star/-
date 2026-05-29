@@ -16,7 +16,12 @@ const TARGET_CHANNELS = [
     '1501951333790384189', '1503680035528376571', '1503680189391966238'
 ];
 
-const API_BASE = process.env.SITE_URL || 'http://127.0.0.1:8000';
+let API_BASE = process.env.SITE_URL || 'http://127.0.0.1:8000';
+// Нормализация: дописываем схему, если её забыли, и убираем хвостовой слеш
+if (API_BASE && !/^https?:\/\//i.test(API_BASE)) API_BASE = 'https://' + API_BASE;
+API_BASE = API_BASE.replace(/\/+$/, '');
+console.log(`🌐 [DS] SITE_URL = ${API_BASE}`);
+
 const API_URL = `${API_BASE}/api.php?action=log_voice`;
 const API_TOKEN = process.env.BOT_API_TOKEN || 'futika_bot_secret_2026';
 const SYNC_URL = `${API_BASE}/api.php?action=update_active_sessions`;
@@ -75,17 +80,21 @@ async function runDoubleStaffScan() {
         console.log(`🌐 [DS] Проверяю ${otherGuilds.size} других серверов...`);
 
         for (const [, guild] of otherGuilds) {
+            let fetchedInGuild = 0;
+            let matchedInGuild = 0;
             // запрашиваем ТОЛЬКО наших стафферов по ID, батчами по 100
             for (let i = 0; i < staffIds.length; i += 100) {
                 const chunk = staffIds.slice(i, i + 100);
                 let members;
                 try { members = await guild.members.fetch({ user: chunk }); }
-                catch (e) { continue; }
+                catch (e) { console.warn(`⚠️ [DS] ${guild.name}: ошибка fetch — ${e.message}`); continue; }
+                fetchedInGuild += members.size;
                 members.forEach(member => {
                     const staffRoles = member.roles.cache
                         .filter(r => r.name !== '@everyone' && isStaffRole(r.name))
                         .map(r => r.name);
                     if (staffRoles.length > 0) {
+                        matchedInGuild++;
                         const id = member.id;
                         if (!found.has(id)) found.set(id, { discord_id: id, username: nameById[id] || member.user.username, entries: [] });
                         staffRoles.forEach(rn => found.get(id).entries.push({ guild: guild.name, role: rn }));
@@ -93,6 +102,7 @@ async function runDoubleStaffScan() {
                 });
                 await dsSleep(800);
             }
+            console.log(`[DS] ${guild.name}: наших участников ${fetchedInGuild}, со стаф-ролью ${matchedInGuild}`);
         }
 
         const results = Array.from(found.values());

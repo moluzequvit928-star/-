@@ -568,6 +568,14 @@ if ($action === 'get_staff_ids') {
             if ($id === '' || $nick === '' || $nick === 'Никнейм' || mb_stripos($nick, 'смена') !== false) continue;
             $staff[$id] = $nick; // уникальность по id
         }
+        // Плюс стафф с аккаунтами на сайте (кураторы/гл.кураторы/админы/мастера)
+        try {
+            $u = $pdo->query("SELECT discord_id, username FROM users WHERE discord_id IS NOT NULL AND discord_id <> ''");
+            while ($row = $u->fetch(PDO::FETCH_ASSOC)) {
+                $uid = preg_replace('/[^0-9]/', '', (string) $row['discord_id']);
+                if ($uid !== '' && !isset($staff[$uid])) $staff[$uid] = $row['username'];
+            }
+        } catch (Exception $e) {}
         $out = [];
         foreach ($staff as $id => $nick) $out[] = ['id' => $id, 'username' => $nick];
         echo json_encode(['success' => true, 'staff' => $out]);
