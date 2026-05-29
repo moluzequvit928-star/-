@@ -21,6 +21,63 @@ const API_URL = `${API_BASE}/api.php?action=log_voice`;
 const API_TOKEN = process.env.BOT_API_TOKEN || 'futika_bot_secret_2026';
 const SYNC_URL = `${API_BASE}/api.php?action=update_active_sessions`;
 
+// === ДАБЛ-СТАФФ (сканирование на фоне) ===
+const DS_URL = `${API_BASE}/api.php?action=update_doublestaff`;
+const DS_INTERVAL = parseInt(process.env.DS_INTERVAL_MS || '3600000', 10); // раз в час
+const STAFF_KEYWORDS = [
+    'саппорт', 'support', 'отвечает',
+    'модер', 'moder', 'moderator', 'модератор', 'mod',
+    'контрол', 'control',
+    'админ', 'admin', 'administrator', 'администратор',
+    'куратор', 'curator',
+    'staff', 'стафф', 'хелпер', 'helper',
+    'blum', 'content', 'contentmaker', 'гл.'
+];
+function isStaffRole(name) {
+    const n = (name || '').toLowerCase();
+    return STAFF_KEYWORDS.some(k => n.includes(k));
+}
+function dsSleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function runDoubleStaffScan() {
+    try {
+        const mainGuild = client.guilds.cache.get(GUILD_ID);
+        if (!mainGuild) return;
+        await mainGuild.members.fetch().catch(() => {});
+
+        const staff = new Map(); // id -> username
+        mainGuild.members.cache.forEach(m => {
+            if (m.roles.cache.has(SUPPORT_ROLE_ID)) staff.set(m.id, m.user.username);
+        });
+        if (staff.size === 0) return;
+
+        const found = new Map();
+        const otherGuilds = client.guilds.cache.filter(g => g.id !== GUILD_ID);
+
+        for (const [, guild] of otherGuilds) {
+            try { await guild.members.fetch(); } catch (e) { continue; }
+            for (const [id, username] of staff) {
+                const member = guild.members.cache.get(id);
+                if (!member) continue;
+                const staffRoles = member.roles.cache
+                    .filter(r => r.name !== '@everyone' && isStaffRole(r.name))
+                    .map(r => r.name);
+                if (staffRoles.length > 0) {
+                    if (!found.has(id)) found.set(id, { discord_id: id, username, entries: [] });
+                    staffRoles.forEach(rn => found.get(id).entries.push({ guild: guild.name, role: rn }));
+                }
+            }
+            await dsSleep(1500);
+        }
+
+        const results = Array.from(found.values());
+        await axios.post(DS_URL, { token: API_TOKEN, results });
+        console.log(`🔎 Дабл-стафф: найдено ${results.length}, отправлено на сайт`);
+    } catch (err) {
+        console.error('❌ Ошибка скана дабл-стаффа:', err.message);
+    }
+}
+
 // Хранилище активных сессий: userId -> { channelId, startTime }
 const activeSessions = new Map();
 
@@ -58,6 +115,10 @@ client.on('ready', async () => {
 
     setInterval(syncActiveSessions, 10000);
     syncActiveSessions();
+
+    // Дабл-стафф: первый скан через минуту после старта, далее по интервалу
+    setTimeout(runDoubleStaffScan, 60000);
+    setInterval(runDoubleStaffScan, DS_INTERVAL);
 });
 
 client.on('voiceStateUpdate', async (oldState, newState) => {

@@ -60,6 +60,16 @@ try {
                         <i class="fas fa-history"></i> <span>История устников</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="pet.php" class="nav-link <?= $currentPage === 'pet.php' ? 'active' : '' ?>">
+                        <i class="fas fa-paw"></i> <span>Питомец</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="achievements.php" class="nav-link <?= $currentPage === 'achievements.php' ? 'active' : '' ?>">
+                        <i class="fas fa-medal"></i> <span>Достижения</span>
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -75,6 +85,16 @@ try {
                 <li class="nav-item">
                     <a href="reattestation_archive.php" class="nav-link <?= $currentPage === 'reattestation_archive.php' ? 'active' : '' ?>">
                         <i class="fas fa-archive"></i> <span>Архив</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="staff_history.php" class="nav-link <?= $currentPage === 'staff_history.php' ? 'active' : '' ?>">
+                        <i class="fas fa-door-open"></i> <span>История стафа</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="double_staff.php" class="nav-link <?= $currentPage === 'double_staff.php' ? 'active' : '' ?>">
+                        <i class="fas fa-user-secret"></i> <span>Дабл-стафф</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -188,3 +208,52 @@ try {
         }
     });
 </script>
+
+<?php if ($currentPage !== 'pet.php'): ?>
+<!-- 🐾 Плавающий виджет питомца -->
+<style>
+    #petWidget { position: fixed; bottom: 18px; right: 18px; z-index: 9000; cursor: pointer; text-decoration: none; display: none; animation: pwWander 10s ease-in-out infinite; }
+    #petWidget .pw-emoji { font-size: 2.8rem; line-height: 1; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.45)); animation: pwIdle 2.2s ease-in-out infinite; display: block; }
+    @keyframes pwIdle { 0%,100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-10px) rotate(3deg); } }
+    @keyframes pwWander { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-70px); } }
+    #petWidget .pw-card { position: absolute; bottom: 100%; right: 0; margin-bottom: 8px; background: rgba(15,23,42,0.96); border: 1px solid rgba(167,139,250,0.35); border-radius: 12px; padding: 0.6rem 0.8rem; min-width: 150px; opacity: 0; transform: translateY(6px); pointer-events: none; transition: 0.2s; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    #petWidget:hover .pw-card { opacity: 1; transform: translateY(0); }
+    #petWidget .pw-name { font-weight: 800; color: #fff; font-size: 0.85rem; }
+    #petWidget .pw-lvl { color: #A78BFA; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    #petWidget .pw-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden; margin-top: 5px; }
+    #petWidget .pw-fill { height: 100%; background: linear-gradient(90deg,#10B981,#34D399); border-radius: 999px; }
+    #petWidget.pw-new .pw-emoji { animation: pwIdle 2.2s ease-in-out infinite; }
+    @media (max-width: 640px) { #petWidget { bottom: 76px; } }
+</style>
+<a href="pet.php" id="petWidget" title="Питомец">
+    <div class="pw-card" id="pwCard"></div>
+    <span class="pw-emoji" id="pwEmoji">🐾</span>
+</a>
+<script>
+    (function() {
+        const w = document.getElementById('petWidget');
+        if (!w) return;
+        fetch('api.php?action=pet_get&t=' + Date.now())
+            .then(r => r.json())
+            .then(res => {
+                if (!res || !res.success) return;
+                const emoji = document.getElementById('pwEmoji');
+                const card = document.getElementById('pwCard');
+                if (res.has_pet) {
+                    const lv = res.level, p = res.pet;
+                    const pct = Math.min(100, Math.round(lv.xp_into / lv.xp_for_level * 100));
+                    emoji.textContent = p.emoji;
+                    card.innerHTML = `<div class="pw-name">${(p.name||'').replace(/[<>&]/g,'')}</div>`
+                        + `<div class="pw-lvl">Уровень ${lv.level}</div>`
+                        + `<div class="pw-bar"><div class="pw-fill" style="width:${pct}%"></div></div>`;
+                } else {
+                    w.classList.add('pw-new');
+                    emoji.textContent = '🐾';
+                    card.innerHTML = '<div class="pw-name">Заведи питомца!</div><div class="pw-lvl">нажми сюда</div>';
+                }
+                w.style.display = 'block';
+            })
+            .catch(() => {});
+    })();
+</script>
+<?php endif; ?>

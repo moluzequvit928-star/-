@@ -57,6 +57,95 @@ try {
         )");
     } catch (Exception $e) {}
 
+    // === СИСТЕМА ПИТОМЦЕВ ===
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS pets (
+            discord_id VARCHAR(50) PRIMARY KEY,
+            owner_name VARCHAR(100) DEFAULT NULL,
+            pet_type VARCHAR(30) NOT NULL DEFAULT 'dog',
+            pet_name VARCHAR(50) NOT NULL DEFAULT 'Питомец',
+            xp INT NOT NULL DEFAULT 0,
+            last_fed DATE DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+    } catch (Exception $e) {}
+    // на случай, если таблица pets уже создана без колонки last_fed
+    try { $pdo->exec("ALTER TABLE pets ADD COLUMN last_fed DATE DEFAULT NULL"); } catch (Exception $e) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS pet_quests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(120) NOT NULL,
+            description TEXT,
+            xp_reward INT NOT NULL DEFAULT 50,
+            kind VARCHAR(20) NOT NULL DEFAULT 'custom',
+            target_role VARCHAR(20) NOT NULL DEFAULT 'all',
+            goal_count INT NOT NULL DEFAULT 1,
+            created_by VARCHAR(100) DEFAULT NULL,
+            is_active TINYINT(1) DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } catch (Exception $e) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS pet_quest_progress (
+            quest_id INT NOT NULL,
+            discord_id VARCHAR(50) NOT NULL,
+            progress INT NOT NULL DEFAULT 0,
+            completed TINYINT(1) DEFAULT 0,
+            rewarded TINYINT(1) DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (quest_id, discord_id)
+        )");
+    } catch (Exception $e) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS pet_achievements (
+            discord_id VARCHAR(50) NOT NULL,
+            achievement_id VARCHAR(40) NOT NULL,
+            unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (discord_id, achievement_id)
+        )");
+    } catch (Exception $e) {}
+
+    // === ИСТОРИЯ СТАФА (ВЫШКИ) ===
+    // staff_seen — когда участника впервые увидели при сверке + дата захода с таблицы (для стажа)
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS staff_seen (
+            discord_id VARCHAR(50) PRIMARY KEY,
+            username VARCHAR(100) DEFAULT NULL,
+            join_date DATE DEFAULT NULL,
+            first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } catch (Exception $e) {}
+    // staff_history — лог ушедших: роль, стаж, дата ухода
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS staff_history (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            discord_id VARCHAR(50) NOT NULL,
+            username VARCHAR(100) DEFAULT NULL,
+            role VARCHAR(50) DEFAULT 'master',
+            joined_at DATE DEFAULT NULL,
+            left_at DATE DEFAULT NULL,
+            days_on_branch INT DEFAULT 0,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } catch (Exception $e) {}
+
+    // double_staff — найденные «дабл-стаффы» (роли на других серверах)
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS double_staff (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            discord_id VARCHAR(50) NOT NULL,
+            username VARCHAR(100) DEFAULT NULL,
+            guild_name VARCHAR(150) DEFAULT NULL,
+            role_name VARCHAR(150) DEFAULT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX (discord_id)
+        )");
+    } catch (Exception $e) {}
+
 } catch (PDOException $e) {
     // Если базы не существует, попробуем подключиться без нее и создать (только для локалки)
     try {
