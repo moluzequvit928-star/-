@@ -25,13 +25,18 @@ const SYNC_URL = `${API_BASE}/api.php?action=update_active_sessions`;
 const DS_URL = `${API_BASE}/api.php?action=update_doublestaff`;
 const DS_INTERVAL = parseInt(process.env.DS_INTERVAL_MS || '3600000', 10); // раз в час
 const STAFF_KEYWORDS = [
-    'саппорт', 'support', 'отвечает',
+    // саппорт
+    'саппорт', 'support', 'поддержка', 'отвечает',
+    // модерка
     'модер', 'moder', 'moderator', 'модератор', 'mod',
-    'контрол', 'control',
+    // контроль
+    'контрол', 'контроль', 'control',
+    // админка
     'админ', 'admin', 'administrator', 'администратор',
+    // кураторка
     'куратор', 'curator',
-    'staff', 'стафф', 'хелпер', 'helper',
-    'blum', 'content', 'contentmaker', 'гл.'
+    // прочее
+    'staff', 'стафф', 'хелпер', 'helper', 'blum', 'content', 'contentmaker', 'гл.'
 ];
 function isStaffRole(name) {
     const n = (name || '').toLowerCase();
