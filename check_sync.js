@@ -150,16 +150,21 @@ client.on('ready', async () => {
             let member = sheetMembers.get(id) || membersWithRole.get(id);
 
             if (!member || !member.roles.cache.has(ROLE_ID)) {
-                // точечная перепроверка
+                // точечная перепроверка через REST (надёжнее пачки)
                 try {
-                    member = await guild.members.fetch({ user: id, force: true });
+                    member = await guild.members.fetch(id);
                 } catch (e) {
                     member = null; // 404 = реально не в сервере
                 }
                 await new Promise(r => setTimeout(r, 150)); // лёгкая пауза от рейт-лимита
             }
 
-            if (!member || !member.roles.cache.has(ROLE_ID)) {
+            if (!member) {
+                console.log(`   ⛔ [SYNC] ${id} — не найден на сервере`);
+                missingInDiscord.push(id);
+            } else if (!member.roles.cache.has(ROLE_ID)) {
+                const roleNames = member.roles.cache.filter(r => r.name !== '@everyone').map(r => r.name).join(', ');
+                console.log(`   ⚠️ [SYNC] ${id} (${member.user.tag}) — нет роли ${ROLE_ID}. Его роли: [${roleNames}]`);
                 missingInDiscord.push(id);
             }
         }
