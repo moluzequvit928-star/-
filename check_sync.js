@@ -142,13 +142,27 @@ client.on('ready', async () => {
             }
         });
 
-        // Ищем тех, кто в D, но роли нет (вышку W не считаем если у них нет роли)
-        mandatoryIds.forEach(id => {
-            const member = sheetMembers.get(id);
+        // Ищем тех, кто в D, но роли нет.
+        // ВАЖНО: пачечный fetch({user}) через селф-бот возвращает не всех,
+        // поэтому "подозрительных" перепроверяем точечно через REST (fetch по одному) —
+        // иначе реальные саппорты ошибочно попадают в "убрать из таблицы".
+        for (const id of mandatoryIds) {
+            let member = sheetMembers.get(id) || membersWithRole.get(id);
+
+            if (!member || !member.roles.cache.has(ROLE_ID)) {
+                // точечная перепроверка
+                try {
+                    member = await guild.members.fetch({ user: id, force: true });
+                } catch (e) {
+                    member = null; // 404 = реально не в сервере
+                }
+                await new Promise(r => setTimeout(r, 150)); // лёгкая пауза от рейт-лимита
+            }
+
             if (!member || !member.roles.cache.has(ROLE_ID)) {
                 missingInDiscord.push(id);
             }
-        });
+        }
 
         console.log('\n' + '═'.repeat(45));
         console.log('           РЕЗУЛЬТАТЫ СВЕРКИ');
