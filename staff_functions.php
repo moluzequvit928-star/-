@@ -75,7 +75,9 @@ function normalizeText($text)
 
 function getAllDashboardData($pdo)
 {
-    $csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', ''));
+    // Состав администрации лежит на отдельном листе (первая вкладка по умолчанию),
+    // НЕ на листе смен (main_sheet_gid), который используется для подсчёта баллов.
+    $csvUrl = getGoogleSheetCsvUrl(configValue('COMPOSITION_GID', 'composition_gid', ''));
     $rows = loadCsvRows($csvUrl);
 
     $management = [
@@ -288,13 +290,13 @@ function getAppConfig() {
     return is_array($appConfig) ? $appConfig : [];
 }
 
-function getStaffCsvUrl($gid = '1970062457') {
+function getStaffCsvUrl($gid = '2053240546') {
     $config = getAppConfig();
     $sheetId = $config['google_sheet_id'] ?? '1w2r_C3R7kh5CDvlehOHOjd3DPnvCMBQ9SnXZnB6t754';
     return "https://docs.google.com/spreadsheets/d/{$sheetId}/export?format=csv&gid={$gid}";
 }
 
-function fetchStaffRows($gid = '1970062457') {
+function fetchStaffRows($gid = '2053240546') {
     $url = getStaffCsvUrl($gid);
     $cacheDir = __DIR__ . '/cache';
     if (!is_dir($cacheDir)) @mkdir($cacheDir, 0777, true);
