@@ -99,25 +99,21 @@ client.on('ready', async () => {
         const allRelevantIds = Array.from(new Set([...mandatoryIds, ...ignoredIds]));
         const sheetMembers = new Map();
 
-        // Оптимизация: Запускаем запросы параллельно пачками
-        const chunkSize = 50;
-        const promises = [];
+        // ВАЖНО: грузим ПОСЛЕДОВАТЕЛЬНО с паузами. Параллельные запросы (Promise.all)
+        // через селф-бот перегружают gateway и часть участников теряется → ложные "нет роли".
+        const chunkSize = 100;
         for (let i = 0; i < allRelevantIds.length; i += chunkSize) {
             const chunk = allRelevantIds.slice(i, i + chunkSize);
-            promises.push(
-                guild.members.fetch({ user: chunk, withPresences: false }).catch(e => {
-                    console.error(`Ошибка при загрузке пачки: ${e.message}`);
-                    return new Map();
-                })
-            );
+            try {
+                const fetched = await guild.members.fetch({ user: chunk, withPresences: false });
+                fetched.forEach(m => sheetMembers.set(m.id, m));
+            } catch (e) {
+                console.error(`Ошибка при загрузке пачки: ${e.message}`);
+            }
+            await new Promise(r => setTimeout(r, 600));
         }
 
-        const results = await Promise.all(promises);
-        results.forEach(fetchedMap => {
-            fetchedMap.forEach(m => sheetMembers.set(m.id, m));
-        });
-
-        console.log('✅ Данные участников получены.');
+        console.log(`✅ Данные участников получены: ${sheetMembers.size}/${allRelevantIds.length}`);
 
         // Получаем всех с ролью (быстро, без статусов) с таймаутом, чтобы предотвратить зависание
         let membersWithRole = new Map();
@@ -150,13 +146,14 @@ client.on('ready', async () => {
             let member = sheetMembers.get(id) || membersWithRole.get(id);
 
             if (!member || !member.roles.cache.has(ROLE_ID)) {
-                // точечная перепроверка через REST (надёжнее пачки)
+                // точечная перепроверка через GATEWAY (REST для селф-бота не работает)
                 try {
-                    member = await guild.members.fetch(id);
+                    const re = await guild.members.fetch({ user: [id], withPresences: false });
+                    member = re.get(id) || null;
                 } catch (e) {
-                    member = null; // 404 = реально не в сервере
+                    member = null;
                 }
-                await new Promise(r => setTimeout(r, 150)); // лёгкая пауза от рейт-лимита
+                await new Promise(r => setTimeout(r, 250)); // пауза от рейт-лимита
             }
 
             if (!member) {
