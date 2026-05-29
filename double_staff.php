@@ -71,7 +71,7 @@ try {
                         </div>
                     </div>
                     <div class="muted">
-                        <?= $lastUpdate ? 'Обновлено: ' . date('d.m.Y H:i', strtotime($lastUpdate)) : 'Данных ещё нет — запусти чекер' ?>
+                        <?= $lastUpdate ? 'Обновлено: ' . date('d.m.Y H:i', strtotime($lastUpdate)) : 'Данных ещё нет — нужен запущенный voice-трекер' ?>
                     </div>
                     <input type="text" id="dsSearch" class="ds-search" placeholder="Поиск по нику или ID..." oninput="filterDs()" style="margin-left:auto;">
                 </div>
