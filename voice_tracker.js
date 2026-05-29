@@ -71,9 +71,30 @@ async function runDoubleStaffScan() {
             return;
         }
 
-        const staffIds = staffList.map(s => String(s.id));
+        let staffIds = staffList.map(s => String(s.id));
         const nameById = {};
         staffList.forEach(s => { nameById[String(s.id)] = s.username; });
+
+        // Оставляем только тех, у кого РЕАЛЬНО есть роль саппорта на основном сервере
+        // (исключаем бывших / тех, кто в "Убрать из гугл таблицы").
+        const mainGuild = client.guilds.cache.get(GUILD_ID);
+        if (mainGuild) {
+            const confirmed = [];
+            for (let i = 0; i < staffIds.length; i += 100) {
+                const chunk = staffIds.slice(i, i + 100);
+                let members;
+                try { members = await mainGuild.members.fetch({ user: chunk }); }
+                catch (e) { continue; }
+                members.forEach(m => {
+                    if (m.roles.cache.has(SUPPORT_ROLE_ID) && !m.roles.cache.has(EXCLUDE_ROLE_ID)) confirmed.push(m.id);
+                });
+                await dsSleep(800);
+            }
+            console.log(`✅ [DS] Активных саппортов на основном сервере: ${confirmed.length} (из ${staffIds.length} в списке)`);
+            if (confirmed.length > 0) staffIds = confirmed;
+        } else {
+            console.warn('⚠️ [DS] Основной сервер не в кэше — проверяю без фильтра по роли.');
+        }
 
         const found = new Map();
         const otherGuilds = client.guilds.cache.filter(g => g.id !== GUILD_ID);
@@ -82,7 +103,7 @@ async function runDoubleStaffScan() {
         for (const [, guild] of otherGuilds) {
             let fetchedInGuild = 0;
             let matchedInGuild = 0;
-            // запрашиваем ТОЛЬКО наших стафферов по ID, батчами по 100
+            // запрашиваем ТОЛЬКО наших активных саппортов по ID, батчами по 100
             for (let i = 0; i < staffIds.length; i += 100) {
                 const chunk = staffIds.slice(i, i + 100);
                 let members;
