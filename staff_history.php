@@ -17,7 +17,7 @@ if (!in_array($role, ['admin', 'chief', 'curator'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FUTURAMA STAFF | Дабл-стафф</title>
+    <title>FUTURAMA STAFF | История стафа</title>
     <link rel="icon" type="image/png" href="favicon_futurama_staff_1776084855108.png">
     <link rel="stylesheet" href="index.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -52,8 +52,8 @@ if (!in_array($role, ['admin', 'chief', 'curator'])) {
         <main class="main-content">
             <header class="header">
                 <div class="header-title">
-                    <h1>Дабл-стафф</h1>
-                    <p>Кто из стафа состоит в стафе на других серверах</p>
+                    <h1>История стафа</h1>
+                    <p>Ушедшие с ветки: роль и сколько простояли</p>
                 </div>
                 <div class="header-actions">
                     <a href="logout.php" class="btn-logout-premium"><i class="fas fa-sign-out-alt"></i> Выйти</a>

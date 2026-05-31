@@ -102,12 +102,7 @@ try {
                         <i class="fas fa-headset"></i> <span>Чек проходных</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a href="pt_tracker.php" class="nav-link <?= $currentPage === 'pt_tracker.php' ? 'active' : '' ?>">
-                        <i class="fas fa-business-time"></i> <span>Учет ПТ</span>
-                    </a>
-                </li>
-                <li class="nav-item">
+<li class="nav-item">
                     <a href="points_calculator.php" class="nav-link <?= $currentPage === 'points_calculator.php' ? 'active' : '' ?>">
                         <i class="fas fa-calculator"></i> <span>Подсчет баллов</span>
                     </a>
