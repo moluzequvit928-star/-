@@ -127,6 +127,39 @@ if ($action === 'pet_create') {
     exit;
 }
 
+// === ПИТОМЕЦ: переименовать ===
+if ($action === 'pet_rename') {
+    $discordId = $_SESSION['discord_id'] ?? '';
+    if (!$discordId) { echo json_encode(['success' => false, 'error' => 'not_logged_in']); exit; }
+    $name = trim($_POST['pet_name'] ?? '');
+    if ($name === '') { echo json_encode(['success' => false, 'error' => 'Имя не может быть пустым']); exit; }
+    if (mb_strlen($name) > 50) $name = mb_substr($name, 0, 50);
+    try {
+        $stmt = $pdo->prepare("UPDATE pets SET pet_name = ? WHERE discord_id = ?");
+        $stmt->execute([$name, $discordId]);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// === ПИТОМЕЦ: удалить ===
+if ($action === 'pet_delete') {
+    $discordId = $_SESSION['discord_id'] ?? '';
+    if (!$discordId) { echo json_encode(['success' => false, 'error' => 'not_logged_in']); exit; }
+    try {
+        $pdo->prepare("DELETE FROM pets WHERE discord_id = ?")->execute([$discordId]);
+        // также чистим прогресс по квестам и достижения этого пользователя
+        $pdo->prepare("DELETE FROM pet_quest_progress WHERE discord_id = ?")->execute([$discordId]);
+        $pdo->prepare("DELETE FROM pet_achievements WHERE discord_id = ?")->execute([$discordId]);
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // === КВЕСТЫ: список всех (только админ) ===
 if ($action === 'quest_list_admin') {
     if (($_SESSION['role'] ?? '') !== 'admin') { echo json_encode(['success' => false, 'error' => 'forbidden']); exit; }

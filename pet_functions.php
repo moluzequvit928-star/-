@@ -1,10 +1,17 @@
 <?php
 // pet_functions.php — логика системы питомцев (уровни, XP, квесты)
 
-// Доступные типы питомцев: ключ => эмодзи
+// HTML-тег картинки героя Доты (CDN Valve). Размер привязан к font-size родителя.
+function dotaImg($slug)
+{
+    return '<img src="https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/icons/' . $slug . '.png" style="width:1em;height:1em;object-fit:cover;border-radius:14%;vertical-align:middle;display:inline-block;" alt="">';
+}
+
+// Доступные типы питомцев: ключ => HTML/эмодзи для отображения
 function petTypes()
 {
     return [
+        // эмодзи-зверушки
         'dog'     => '🐶',
         'cat'     => '🐱',
         'rabbit'  => '🐰',
@@ -15,6 +22,17 @@ function petTypes()
         'penguin' => '🐧',
         'lion'    => '🦁',
         'dragon'  => '🐲',
+        // герои Доты
+        'pudge'          => dotaImg('pudge'),
+        'invoker'        => dotaImg('invoker'),
+        'juggernaut'     => dotaImg('juggernaut'),
+        'antimage'       => dotaImg('antimage'),
+        'crystal_maiden' => dotaImg('crystal_maiden'),
+        'shadow_fiend'   => dotaImg('nevermore'), // у SF внутренний slug — 'nevermore'
+        'lina'           => dotaImg('lina'),
+        'axe'            => dotaImg('axe'),
+        'sniper'         => dotaImg('sniper'),
+        'lion_dota'      => dotaImg('lion'),
     ];
 }
 
@@ -100,16 +118,16 @@ function achievementDefs()
 {
     return [
         // Переаттестации (кураторы)
-        ['id' => 'reatt_10',  'metric' => 'reattestations', 'goal' => 10,  'role' => 'curator', 'icon' => 'fa-clipboard-list',  'title' => 'Новичок-проверяющий', 'desc' => 'Провести 10 переаттестаций', 'xp' => 50],
-        ['id' => 'reatt_25',  'metric' => 'reattestations', 'goal' => 25,  'role' => 'curator', 'icon' => 'fa-clipboard-check', 'title' => 'Опытный куратор',     'desc' => 'Провести 25 переаттестаций', 'xp' => 100],
-        ['id' => 'reatt_50',  'metric' => 'reattestations', 'goal' => 50,  'role' => 'curator', 'icon' => 'fa-graduation-cap',  'title' => 'Мастер аттестаций',    'desc' => 'Провести 50 переаттестаций', 'xp' => 200],
-        ['id' => 'reatt_100', 'metric' => 'reattestations', 'goal' => 100, 'role' => 'curator', 'icon' => 'fa-crown',           'title' => 'Легенда проверок',     'desc' => 'Провести 100 переаттестаций', 'xp' => 400],
+        ['id' => 'reatt_10',  'metric' => 'reattestations', 'goal' => 10,  'role' => 'curator', 'icon' => 'fa-clipboard-list',  'title' => 'Красавик!',              'desc' => 'Провести 10 переаттестаций', 'xp' => 50],
+        ['id' => 'reatt_25',  'metric' => 'reattestations', 'goal' => 25,  'role' => 'curator', 'icon' => 'fa-clipboard-check', 'title' => 'Легенда!',               'desc' => 'Провести 25 переаттестаций', 'xp' => 100],
+        ['id' => 'reatt_50',  'metric' => 'reattestations', 'goal' => 50,  'role' => 'curator', 'icon' => 'fa-graduation-cap',  'title' => 'Мастер аттестаций',      'desc' => 'Провести 50 переаттестаций', 'xp' => 200],
+        ['id' => 'reatt_100', 'metric' => 'reattestations', 'goal' => 100, 'role' => 'curator', 'icon' => 'fa-crown',           'title' => 'Прикинь я проиграл',     'desc' => 'Провести 100 переаттестаций', 'xp' => 400],
 
         // Добавление саппортов (мастера)
-        ['id' => 'supp_20',  'metric' => 'supports', 'goal' => 20,  'role' => 'master', 'icon' => 'fa-handshake',  'title' => 'Рекрутёр',        'desc' => 'Добавить 20 саппортов',  'xp' => 50],
-        ['id' => 'supp_30',  'metric' => 'supports', 'goal' => 30,  'role' => 'master', 'icon' => 'fa-chart-line', 'title' => 'Хедхантер',       'desc' => 'Добавить 30 саппортов',  'xp' => 100],
-        ['id' => 'supp_50',  'metric' => 'supports', 'goal' => 50,  'role' => 'master', 'icon' => 'fa-user-tie',   'title' => 'Кадровик года',   'desc' => 'Добавить 50 саппортов',  'xp' => 200],
-        ['id' => 'supp_100', 'metric' => 'supports', 'goal' => 100, 'role' => 'master', 'icon' => 'fa-star',       'title' => 'Магнит талантов', 'desc' => 'Добавить 100 саппортов', 'xp' => 400],
+        ['id' => 'supp_20',  'metric' => 'supports', 'goal' => 20,  'role' => 'master', 'icon' => 'fa-handshake',  'title' => 'Стажёр',             'desc' => 'Добавить 20 саппортов',  'xp' => 50],
+        ['id' => 'supp_30',  'metric' => 'supports', 'goal' => 30,  'role' => 'master', 'icon' => 'fa-chart-line', 'title' => 'Безумец',            'desc' => 'Добавить 30 саппортов',  'xp' => 100],
+        ['id' => 'supp_50',  'metric' => 'supports', 'goal' => 50,  'role' => 'master', 'icon' => 'fa-user-tie',   'title' => 'Кадровик года',      'desc' => 'Добавить 50 саппортов',  'xp' => 200],
+        ['id' => 'supp_100', 'metric' => 'supports', 'goal' => 100, 'role' => 'master', 'icon' => 'fa-star',       'title' => 'Просто мусорнись',   'desc' => 'Добавить 100 саппортов', 'xp' => 400],
 
         // Стаж «на ветке» (все)
         ['id' => 'days_7',   'metric' => 'tenure_days', 'goal' => 7,   'role' => 'all', 'icon' => 'fa-seedling', 'title' => 'Прижился',     'desc' => 'Простоять на ветке 7 дней',   'xp' => 30],

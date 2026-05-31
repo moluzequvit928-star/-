@@ -228,6 +228,8 @@ try {
     (function() {
         const w = document.getElementById('petWidget');
         if (!w) return;
+        // Если пользователь скрыл виджет — не показываем (кнопка «Скрыть виджет» на странице питомца)
+        if (localStorage.getItem('pet_hidden') === '1') return;
         fetch('api.php?action=pet_get&t=' + Date.now())
             .then(r => r.json())
             .then(res => {
@@ -237,13 +239,13 @@ try {
                 if (res.has_pet) {
                     const lv = res.level, p = res.pet;
                     const pct = Math.min(100, Math.round(lv.xp_into / lv.xp_for_level * 100));
-                    emoji.textContent = p.emoji;
+                    emoji.innerHTML = p.emoji; // может быть эмодзи или <img> (например, герой Доты)
                     card.innerHTML = `<div class="pw-name">${(p.name||'').replace(/[<>&]/g,'')}</div>`
                         + `<div class="pw-lvl">Уровень ${lv.level}</div>`
                         + `<div class="pw-bar"><div class="pw-fill" style="width:${pct}%"></div></div>`;
                 } else {
                     w.classList.add('pw-new');
-                    emoji.textContent = '🐾';
+                    emoji.innerHTML = '🐾';
                     card.innerHTML = '<div class="pw-name">Заведи питомца!</div><div class="pw-lvl">нажми сюда</div>';
                 }
                 w.style.display = 'block';
