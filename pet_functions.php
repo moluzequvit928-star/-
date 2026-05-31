@@ -36,7 +36,7 @@ function petTypes()
         'batrider'       => dotaImg('batrider'),
         // прочие
         'raccoon'        => '🦝',
-        'shou_kusakabe'  => '<img src="https://cdn.discordapp.com/attachments/1436976322206236703/1510639447883124856/8bb416e0a08a31954c165bee07ea3cbb.png?ex=6a1d8c1e&is=6a1c3a9e&hm=d65a7d0a7aec857744f795d26a3ef5ac8a4384a4ddcbb88d8637111986f0ab67&" style="width:1em;height:1em;object-fit:cover;border-radius:14%;vertical-align:middle;display:inline-block;" alt="">',
+        'shou_kusakabe'  => '<img src="https://cdn.discordapp.com/attachments/1436976322206236703/1510645520685600809/2026-05-31_190457676-no-bg-preview_carve.photos.png?ex=6a1d91c6&is=6a1c4046&hm=e8f250275be83400d25b8a6ac57bb402afc128d54be23cb213aaa80ea5392531&" style="width:1em;height:1em;object-fit:cover;border-radius:14%;vertical-align:middle;display:inline-block;" alt="">',
     ];
 }
 
