@@ -33,6 +33,9 @@ $role = $_SESSION['role'] ?? 'master';
         .type-btn { background: rgba(255,255,255,0.04); border: 2px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 1rem 0.5rem; font-size: 2.2rem; cursor: pointer; transition: 0.2s; text-align: center; }
         .type-btn:hover { background: rgba(255,255,255,0.08); transform: translateY(-3px); }
         .type-btn.selected { border-color: #A78BFA; background: rgba(167,139,250,0.15); box-shadow: 0 0 18px rgba(167,139,250,0.35); }
+        .type-btn.taken { opacity: 0.32; cursor: not-allowed; filter: grayscale(0.7); position: relative; }
+        .type-btn.taken:hover { transform: none; background: rgba(255,255,255,0.04); }
+        .type-btn .taken-label { font-size: 0.55rem; margin-top: 4px; color: #F87171; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 
         .pet-input { width: 100%; padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: rgba(15,23,42,0.6); color: #F8FAFC; font-size: 0.95rem; outline: none; margin-bottom: 0.5rem; }
         .pet-btn { background:#6366F1; color:#fff; border:none; padding: 0.8rem 1.6rem; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; }
@@ -87,7 +90,7 @@ $role = $_SESSION['role'] ?? 'master';
             const root = document.getElementById('petRoot');
             if (!res.success) { root.innerHTML = '<div class="pet-card">Ошибка загрузки</div>'; return; }
 
-            if (!res.has_pet) { root.innerHTML = renderCreate(); bindCreate(); return; }
+            if (!res.has_pet) { root.innerHTML = renderCreate(res.taken || []); bindCreate(); return; }
 
             let html = renderPet(res);
             html += renderQuests(res.quests);
@@ -125,14 +128,24 @@ $role = $_SESSION['role'] ?? 'master';
             box.innerHTML = '<h2 style="margin-top:0;">🏆 Топ питомцев</h2>' + rows;
         }
 
-        function renderCreate() {
-            let grid = Object.entries(PET_TYPES).map(([k,e]) =>
-                `<div class="type-btn ${k==='dog'?'selected':''}" data-type="${k}" onclick="pickType('${k}')">${e}</div>`
-            ).join('');
+        function renderCreate(taken) {
+            taken = taken || [];
+            // если выбранный по умолчанию занят — переключаемся на первый свободный
+            if (taken.includes(selectedType)) {
+                const free = Object.keys(PET_TYPES).find(k => !taken.includes(k));
+                if (free) selectedType = free;
+            }
+            let grid = Object.entries(PET_TYPES).map(([k,e]) => {
+                const isTaken = taken.includes(k);
+                const cls = `type-btn ${k===selectedType?'selected':''} ${isTaken?'taken':''}`;
+                const click = isTaken ? '' : `onclick="pickType('${k}')"`;
+                const title = isTaken ? 'title="Уже занят другим сотрудником"' : '';
+                return `<div class="${cls}" data-type="${k}" ${click} ${title}>${e}${isTaken?'<div class="taken-label">занят</div>':''}</div>`;
+            }).join('');
             return `
                 <div class="pet-card">
                     <h2 style="margin-top:0;">Заведи себе питомца</h2>
-                    <p class="muted">Выбери тип, дай имя — и он будет расти вместе с твоей работой.</p>
+                    <p class="muted">Выбери тип, дай имя — и он будет расти вместе с твоей работой. Серые питомцы уже заняты другими сотрудниками.</p>
                     <span class="pet-label">Тип питомца</span>
                     <div class="type-grid">${grid}</div>
                     <span class="pet-label">Имя питомца</span>

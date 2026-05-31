@@ -41,7 +41,13 @@ if ($action === 'pet_get') {
     $pet = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$pet) {
-        echo json_encode(['success' => true, 'has_pet' => false, 'types' => petTypes()]);
+        // список занятых типов — чтобы UI пометил их как недоступные
+        $taken = [];
+        try {
+            $t = $pdo->query("SELECT pet_type FROM pets");
+            while ($r = $t->fetch(PDO::FETCH_ASSOC)) $taken[] = $r['pet_type'];
+        } catch (Exception $e) {}
+        echo json_encode(['success' => true, 'has_pet' => false, 'types' => petTypes(), 'taken' => $taken]);
         exit;
     }
 
@@ -116,6 +122,15 @@ if ($action === 'pet_create') {
     if (mb_strlen($petName) > 50) $petName = mb_substr($petName, 0, 50);
 
     try {
+        // Проверка уникальности: этот тип не должен быть занят другим пользователем
+        $chk = $pdo->prepare("SELECT discord_id FROM pets WHERE pet_type = ?");
+        $chk->execute([$type]);
+        $owner = $chk->fetchColumn();
+        if ($owner && $owner !== $discordId) {
+            echo json_encode(['success' => false, 'error' => 'Этого питомца уже завёл другой сотрудник — выбери другого.']);
+            exit;
+        }
+
         $pdo->prepare(
             "INSERT INTO pets (discord_id, owner_name, pet_type, pet_name) VALUES (?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE pet_type = VALUES(pet_type), pet_name = VALUES(pet_name)"

@@ -33,6 +33,10 @@ function petTypes()
         'axe'            => dotaImg('axe'),
         'sniper'         => dotaImg('sniper'),
         'lion_dota'      => dotaImg('lion'),
+        'batrider'       => dotaImg('batrider'),
+        // прочие
+        'raccoon'        => '🦝',
+        'shou_kusakabe'  => '<img src="https://cdn.discordapp.com/attachments/1436976322206236703/1510639447883124856/8bb416e0a08a31954c165bee07ea3cbb.png?ex=6a1d8c1e&is=6a1c3a9e&hm=d65a7d0a7aec857744f795d26a3ef5ac8a4384a4ddcbb88d8637111986f0ab67&" style="width:1em;height:1em;object-fit:cover;border-radius:14%;vertical-align:middle;display:inline-block;" alt="">',
     ];
 }
 
