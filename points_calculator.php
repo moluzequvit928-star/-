@@ -34,7 +34,7 @@ $shiftTimes = [
 ];
 
 // Получаем список саппортов из основной Google Таблицы
-$csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '1970062457'));
+$csvUrl = getGoogleSheetCsvUrl(configValue('MAIN_SHEET_GID', 'main_sheet_gid', '2053240546'));
 $rows = loadCsvRows($csvUrl);
 $supports = [];
 
