@@ -16,28 +16,31 @@ $weekReports = 0;
 $monthReports = 0;
 
 try {
+    // Источник статистики — voice_activity (сюда voice-трекер пишет каждую сессию в проходных).
+    // Считаем уникальные сессии (по строкам).
+
     // Сегодня
-    $stmtT = $pdo->query("SELECT COUNT(*) FROM reports WHERE DATE(created_at) = CURDATE()");
+    $stmtT = $pdo->query("SELECT COUNT(*) FROM voice_activity WHERE DATE(start_time) = CURDATE()");
     $todayReports = $stmtT->fetchColumn();
 
     // Неделя (последние 7 дней)
-    $stmtW = $pdo->query("SELECT COUNT(*) FROM reports WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+    $stmtW = $pdo->query("SELECT COUNT(*) FROM voice_activity WHERE start_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
     $weekReports = $stmtW->fetchColumn();
 
     // Месяц (последние 30 дней)
-    $stmtM = $pdo->query("SELECT COUNT(*) FROM reports WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
+    $stmtM = $pdo->query("SELECT COUNT(*) FROM voice_activity WHERE start_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
     $monthReports = $stmtM->fetchColumn();
 
     // Данные для графика за последние 7 дней
     $chartLabels = [];
     $chartData = [];
-    
+
     $stmtChart = $pdo->query("
-        SELECT DATE(created_at) as report_date, COUNT(*) as count 
-        FROM reports 
-        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-        GROUP BY DATE(created_at)
-        ORDER BY DATE(created_at) ASC
+        SELECT DATE(start_time) as report_date, COUNT(*) as count
+        FROM voice_activity
+        WHERE start_time >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+        GROUP BY DATE(start_time)
+        ORDER BY DATE(start_time) ASC
     ");
     $chartRows = $stmtChart->fetchAll(PDO::FETCH_ASSOC);
     
