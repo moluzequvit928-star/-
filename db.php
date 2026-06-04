@@ -35,6 +35,29 @@ try {
     } catch (Exception $e) {}
 
     try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS active_voice_sessions (
+            discord_id VARCHAR(50) PRIMARY KEY,
+            channel_id VARCHAR(50) NOT NULL,
+            start_time TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+    } catch (Exception $e) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS voice_activity (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            discord_id VARCHAR(50) NOT NULL,
+            channel_id VARCHAR(50) NOT NULL,
+            start_time TIMESTAMP NULL,
+            end_time TIMESTAMP NULL,
+            duration INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX (discord_id),
+            INDEX (start_time)
+        )");
+    } catch (Exception $e) {}
+
+    try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS support_overall_points (
             discord_id VARCHAR(50) PRIMARY KEY,
             points DECIMAL(5,2) DEFAULT 0.00
