@@ -102,6 +102,18 @@ try {
                         <i class="fas fa-headset"></i> <span>Чек проходных</span>
                     </a>
                 </li>
+                <?php if ((($_SESSION['username'] ?? '') === 'nevermore8465') || (($_SESSION['role'] ?? '') === 'admin')): ?>
+                <li class="nav-item">
+                    <a href="voice_command.php" class="nav-link <?= $currentPage === 'voice_command.php' ? 'active' : '' ?>">
+                        <i class="fas fa-microphone"></i> <span>/voice массово</span>
+                    </a>
+                </li>
+                <?php endif; ?>
+                <li class="nav-item">
+                    <a href="voice_stats.php" class="nav-link <?= $currentPage === 'voice_stats.php' ? 'active' : '' ?>">
+                        <i class="fas fa-clock"></i> <span>Часы саппортов</span>
+                    </a>
+                </li>
 <li class="nav-item">
                     <a href="points_calculator.php" class="nav-link <?= $currentPage === 'points_calculator.php' ? 'active' : '' ?>">
                         <i class="fas fa-calculator"></i> <span>Подсчет баллов</span>

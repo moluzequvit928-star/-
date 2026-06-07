@@ -58,6 +58,42 @@ try {
     } catch (Exception $e) {}
 
     try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS voice_cmd_queue (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            requested_by VARCHAR(100) NOT NULL,
+            status ENUM('pending','processing','done','failed') NOT NULL DEFAULT 'pending',
+            shifts VARCHAR(20) NOT NULL DEFAULT '7-9',
+            total INT DEFAULT 0,
+            success_count INT DEFAULT 0,
+            fail_count INT DEFAULT 0,
+            log TEXT,
+            requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP NULL,
+            INDEX (status)
+        )");
+    } catch (Exception $e) {}
+
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS voice_stats_weekly (
+            discord_id VARCHAR(50) NOT NULL,
+            week_start DATE NOT NULL,
+            nick VARCHAR(100) DEFAULT NULL,
+            mon_seconds INT DEFAULT 0,
+            tue_seconds INT DEFAULT 0,
+            wed_seconds INT DEFAULT 0,
+            thu_seconds INT DEFAULT 0,
+            fri_seconds INT DEFAULT 0,
+            sat_seconds INT DEFAULT 0,
+            sun_seconds INT DEFAULT 0,
+            total_seconds INT DEFAULT 0,
+            shift VARCHAR(10) DEFAULT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (discord_id, week_start),
+            INDEX (week_start)
+        )");
+    } catch (Exception $e) {}
+
+    try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS support_overall_points (
             discord_id VARCHAR(50) PRIMARY KEY,
             points DECIMAL(5,2) DEFAULT 0.00

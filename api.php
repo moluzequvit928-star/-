@@ -948,4 +948,197 @@ if ($action === 'update_weekly_score') {
     exit;
 }
 
+// === VOICE /voice MASS COMMAND (только nevermore8465 с сайта) ===
+if ($action === 'voice_cmd_request') {
+    $u = $_SESSION['username'] ?? '';
+    $r = $_SESSION['role'] ?? '';
+    $allowed = ($u === 'nevermore8465') || ($r === 'admin');
+    if (!$allowed) {
+        echo json_encode(['success' => false, 'error' => 'Нет прав']);
+        exit;
+    }
+    try {
+        $busy = (int)$pdo->query("SELECT COUNT(*) FROM voice_cmd_queue WHERE status IN ('pending','processing')")->fetchColumn();
+        if ($busy > 0) {
+            echo json_encode(['success' => false, 'error' => 'Уже есть активный запрос — подожди завершения']);
+            exit;
+        }
+        $stmt = $pdo->prepare("INSERT INTO voice_cmd_queue (requested_by, status, shifts) VALUES (?, 'pending', '7-9')");
+        $stmt->execute([$_SESSION['username']]);
+        echo json_encode(['success' => true, 'id' => $pdo->lastInsertId()]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Авто-запрос от селфбота по расписанию (понедельник 00:05)
+if ($action === 'voice_cmd_auto_request') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $token = $data['token'] ?? '';
+    if ($token !== $apiToken) { echo json_encode(['success'=>false,'error'=>'Invalid token']); exit; }
+    try {
+        $busy = (int)$pdo->query("SELECT COUNT(*) FROM voice_cmd_queue WHERE status IN ('pending','processing')")->fetchColumn();
+        if ($busy > 0) { echo json_encode(['success'=>false,'error'=>'busy']); exit; }
+        $pdo->prepare("INSERT INTO voice_cmd_queue (requested_by, status, shifts) VALUES ('auto-weekly','pending','7-9')")->execute();
+        echo json_encode(['success'=>true]);
+    } catch (Exception $e) {
+        echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'voice_cmd_pop') {
+    $token = $_GET['token'] ?? $_POST['token'] ?? '';
+    if ($token !== $apiToken) { echo json_encode(['success'=>false,'error'=>'Invalid token']); exit; }
+    try {
+        $row = $pdo->query("SELECT * FROM voice_cmd_queue WHERE status='pending' ORDER BY id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        if (!$row) { echo json_encode(['success'=>true,'has_task'=>false]); exit; }
+        $pdo->prepare("UPDATE voice_cmd_queue SET status='processing' WHERE id=?")->execute([$row['id']]);
+
+        require_once 'staff_functions.php';
+        $rows = fetchStaffRows(); // лист "Смены" (gid 2053240546)
+        $wanted = ['7','8','9'];
+        $lastShift = '';
+        $staff = [];
+        foreach ($rows as $r) {
+            // Маркер смены вида "7 смена (12:00-14:00)" может оказаться в любой колонке строки
+            // (зависит от того, где начинается merged-ячейка в CSV-экспорте).
+            foreach ($r as $cell) {
+                if (is_string($cell) && preg_match('/(\d+)\s*смена/iu', $cell, $m)) {
+                    $lastShift = $m[1];
+                    break;
+                }
+            }
+            if (in_array($lastShift, $wanted, true)) {
+                // В этой таблице: B=дата, C=ник, D=discord_id
+                $nick = isset($r[2]) ? trim((string)$r[2]) : '';
+                $id   = isset($r[3]) ? trim((string)$r[3]) : '';
+                if (preg_match('/^\d{17,20}$/', $id)) {
+                    $staff[] = ['id'=>$id,'nick'=>$nick,'shift'=>$lastShift];
+                }
+            }
+        }
+        $seen = []; $unique = [];
+        foreach ($staff as $s) { if (!isset($seen[$s['id']])) { $seen[$s['id']] = 1; $unique[] = $s; } }
+
+        echo json_encode([
+            'success'=>true,
+            'has_task'=>true,
+            'task_id'=>(int)$row['id'],
+            'channel_id'=>'1218497082168705145',
+            'bot_id'=>'995020358723846244',
+            // /voice: группа (String choice) | target (User)
+            'group'=>'Support',
+            'staff'=>$unique
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'voice_cmd_complete') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $token = $data['token'] ?? '';
+    if ($token !== $apiToken) { echo json_encode(['success'=>false,'error'=>'Invalid token']); exit; }
+    $taskId = (int)($data['task_id'] ?? 0);
+    $total = (int)($data['total'] ?? 0);
+    $ok = (int)($data['success_count'] ?? 0);
+    $fail = (int)($data['fail_count'] ?? 0);
+    $log = (string)($data['log'] ?? '');
+    $status = ($fail === 0 && $ok > 0) ? 'done' : ($ok === 0 ? 'failed' : 'done');
+    try {
+        $pdo->prepare("UPDATE voice_cmd_queue SET status=?, total=?, success_count=?, fail_count=?, log=?, completed_at=NOW() WHERE id=?")
+            ->execute([$status, $total, $ok, $fail, $log, $taskId]);
+        echo json_encode(['success'=>true]);
+    } catch (Exception $e) {
+        echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'voice_cmd_reset') {
+    $u = $_SESSION['username'] ?? '';
+    $r = $_SESSION['role'] ?? '';
+    if (!(($u === 'nevermore8465') || ($r === 'admin'))) {
+        echo json_encode(['success' => false, 'error' => 'Нет прав']);
+        exit;
+    }
+    try {
+        $pdo->exec("DELETE FROM voice_cmd_queue");
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Сохранение результатов /voice (селфбот шлёт после парсинга embed-ответа бота)
+if ($action === 'voice_stats_save') {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $token = $data['token'] ?? '';
+    if ($token !== $apiToken) { echo json_encode(['success'=>false,'error'=>'Invalid token']); exit; }
+    $discordId = trim((string)($data['discord_id'] ?? ''));
+    $nick = trim((string)($data['nick'] ?? ''));
+    $shift = trim((string)($data['shift'] ?? ''));
+    $weekStart = trim((string)($data['week_start'] ?? '')); // YYYY-MM-DD (понедельник)
+    $days = $data['days'] ?? null;
+    if (!preg_match('/^\d{17,20}$/', $discordId) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $weekStart) || !is_array($days)) {
+        echo json_encode(['success'=>false,'error'=>'bad params']); exit;
+    }
+    $mon = (int)($days['mon'] ?? 0);
+    $tue = (int)($days['tue'] ?? 0);
+    $wed = (int)($days['wed'] ?? 0);
+    $thu = (int)($days['thu'] ?? 0);
+    $fri = (int)($days['fri'] ?? 0);
+    $sat = (int)($days['sat'] ?? 0);
+    $sun = (int)($days['sun'] ?? 0);
+    $total = $mon+$tue+$wed+$thu+$fri+$sat+$sun;
+    try {
+        $stmt = $pdo->prepare("INSERT INTO voice_stats_weekly
+            (discord_id, week_start, nick, mon_seconds, tue_seconds, wed_seconds, thu_seconds, fri_seconds, sat_seconds, sun_seconds, total_seconds, shift)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+            ON DUPLICATE KEY UPDATE
+                nick=VALUES(nick),
+                mon_seconds=VALUES(mon_seconds), tue_seconds=VALUES(tue_seconds), wed_seconds=VALUES(wed_seconds),
+                thu_seconds=VALUES(thu_seconds), fri_seconds=VALUES(fri_seconds), sat_seconds=VALUES(sat_seconds), sun_seconds=VALUES(sun_seconds),
+                total_seconds=VALUES(total_seconds), shift=VALUES(shift)");
+        $stmt->execute([$discordId,$weekStart,$nick,$mon,$tue,$wed,$thu,$fri,$sat,$sun,$total,$shift]);
+        echo json_encode(['success'=>true]);
+    } catch (Exception $e) {
+        echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
+    }
+    exit;
+}
+
+// Список доступных недель + данные за выбранную неделю (для UI)
+if ($action === 'voice_stats_get') {
+    if (!isset($_SESSION['user_logged_in'])) { echo json_encode(['success'=>false,'error'=>'auth']); exit; }
+    try {
+        $weeks = $pdo->query("SELECT DISTINCT week_start FROM voice_stats_weekly ORDER BY week_start DESC")->fetchAll(PDO::FETCH_COLUMN);
+        $selected = $_GET['week'] ?? ($weeks[0] ?? null);
+        $rows = [];
+        if ($selected) {
+            $stmt = $pdo->prepare("SELECT * FROM voice_stats_weekly WHERE week_start=? ORDER BY total_seconds DESC");
+            $stmt->execute([$selected]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        echo json_encode(['success'=>true,'weeks'=>$weeks,'week'=>$selected,'rows'=>$rows]);
+    } catch (Exception $e) {
+        echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'voice_cmd_status') {
+    try {
+        $row = $pdo->query("SELECT * FROM voice_cmd_queue ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        echo json_encode(['success'=>true,'data'=>$row]);
+    } catch (Exception $e) {
+        echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['success' => true]);
