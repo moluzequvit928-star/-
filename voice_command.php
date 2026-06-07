@@ -58,7 +58,36 @@ const $status = document.getElementById('status');
 
 function fmt(t) { return t ? new Date(t.replace(' ', 'T')+'Z').toLocaleString('ru-RU') : '—'; }
 
-async function refresh() {
+async function parseUtc(t) {
+    if (!t) return null;
+    return new Date(t.replace(' ', 'T') + 'Z');
+}
+function fmtRemain(ms) {
+    if (ms <= 0) return 'почти готово';
+    const m = Math.ceil(ms / 60000);
+    if (m < 60) return `~${m} мин`;
+    const h = Math.floor(m / 60); const r = m % 60;
+    return `~${h}ч ${r}м`;
+}
+function calcEta(d) {
+    // Из лога ищем "Прогон ~X мин"
+    let estMin = null;
+    if (d.log) {
+        const m = d.log.match(/Прогон\s+~(\d+)\s*мин/);
+        if (m) estMin = parseInt(m[1], 10);
+    }
+    // Если не нашли — грубо оцениваем: ~50 сек на человека
+    if (!estMin && d.total) estMin = Math.ceil((d.total * 50) / 60);
+    if (!estMin) estMin = 15;
+
+    const start = parseUtc(d.requested_at);
+    if (!start) return null;
+    const eta = new Date(start.getTime() + estMin * 60 * 1000);
+    const remain = eta.getTime() - Date.now();
+    return { eta, remain, estMin };
+}
+
+function refresh() {
     try {
         const r = await fetch('api.php?action=voice_cmd_status');
         const j = await r.json();
@@ -70,6 +99,19 @@ async function refresh() {
         html += `<div>Запросил: ${d.requested_by}</div>`;
         html += `<div>Когда: ${fmt(d.requested_at)} → ${fmt(d.completed_at)}</div>`;
         html += `<div>Смены: ${d.shifts} | Всего: ${d.total} | OK: ${d.success_count} | FAIL: ${d.fail_count}</div>`;
+
+        // ETA для pending/processing
+        if (d.status === 'pending' || d.status === 'processing') {
+            const eta = calcEta(d);
+            if (eta) {
+                const etaTime = eta.eta.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                const remain = fmtRemain(eta.remain);
+                html += `<div style="margin-top:0.6rem;padding:0.6rem 0.8rem;background:rgba(124,58,237,0.15);border-left:3px solid var(--accent,#7c3aed);border-radius:6px">`;
+                html += `<i class="fa-regular fa-clock"></i> Ориентировочно готово в <b>${etaTime}</b> (через ${remain})`;
+                html += `</div>`;
+            }
+        }
+
         if (d.log) html += `<hr><pre style="margin:0;white-space:pre-wrap">${d.log.replace(/</g,'&lt;')}</pre>`;
         $status.innerHTML = html;
 
