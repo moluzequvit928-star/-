@@ -36,6 +36,17 @@ require_once 'user_header.php';
     .vc-pill.processing { background: #3b82f6; color: #fff; }
     .vc-pill.done { background: #10b981; color: #fff; }
     .vc-pill.failed { background: #ef4444; color: #fff; }
+    .vc-rtable { width: 100%; border-collapse: collapse; background: rgba(0,0,0,0.25); border-radius: 10px; overflow: hidden; font-size: 0.85rem; }
+    .vc-rtable th, .vc-rtable td { padding: 0.45rem 0.6rem; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .vc-rtable th { background: rgba(0,0,0,0.4); color: #aaa; font-weight: 700; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .vc-rtable tr:hover { background: rgba(255,255,255,0.02); }
+    .vc-shiftgroup { margin-bottom: 1rem; }
+    .vc-shifthdr { padding: 0.5rem 0.8rem; background: rgba(124,58,237,0.18); border-left: 3px solid var(--accent,#7c3aed); border-radius: 6px; margin-bottom: 0.4rem; font-weight: 700; }
+    .vc-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .vc-tab { padding: 0.35rem 0.8rem; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; font-size: 0.85rem; }
+    .vc-tab.active { background: var(--accent,#7c3aed); border-color: transparent; }
+    .vc-zero { color: #555; }
+    .vc-tot { color: var(--accent,#7c3aed); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -49,6 +60,12 @@ require_once 'user_header.php';
         <button id="resetBtn" class="vc-btn" style="background:#ef4444;margin-left:0.5rem"><i class="fa-solid fa-rotate-left"></i> Сбросить очередь</button>
 
         <div id="status" class="vc-status">Загрузка статуса…</div>
+
+        <div id="resultsWrap" style="margin-top:1.5rem;display:none">
+            <h3 style="margin:0 0 0.6rem 0;font-size:1.05rem"><i class="fa-solid fa-table"></i> Результат за текущую неделю</h3>
+            <div id="shiftFilter" style="margin-bottom:0.6rem"></div>
+            <div id="resultsBody"></div>
+        </div>
     </div>
 </main>
 
@@ -152,6 +169,104 @@ $btn.addEventListener('click', async () => {
 });
 
 refresh();
+
+// === Таблица результатов ===
+const $resultsWrap = document.getElementById('resultsWrap');
+const $resultsBody = document.getElementById('resultsBody');
+const $shiftFilter = document.getElementById('shiftFilter');
+let resultsRows = [];
+let activeShift = 'all';
+
+function fmtSec(sec) {
+    sec = parseInt(sec, 10) || 0;
+    if (sec <= 0) return '<span class="vc-zero">—</span>';
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    const p = [];
+    if (h) p.push(h + 'ч');
+    if (m) p.push(m + 'м');
+    if (!h && !m) p.push(s + 'с');
+    return p.join(' ');
+}
+
+function renderResults() {
+    const filtered = activeShift === 'all' ? resultsRows : resultsRows.filter(r => String(r.shift) === activeShift);
+    if (!filtered.length) {
+        $resultsBody.innerHTML = '<div style="padding:1rem;color:#888;text-align:center">Нет данных. Возможно бот ещё не ответил или парсер не сработал.</div>';
+        return;
+    }
+    // Группируем по сменам
+    const byShift = {};
+    filtered.forEach(r => {
+        const sh = r.shift || '—';
+        (byShift[sh] = byShift[sh] || []).push(r);
+    });
+    const shifts = Object.keys(byShift).sort();
+
+    let html = '';
+    shifts.forEach(sh => {
+        const list = byShift[sh].slice().sort((a, b) => (b.total_seconds|0) - (a.total_seconds|0));
+        const sum = list.reduce((acc, r) => acc + (r.total_seconds|0), 0);
+        html += `<div class="vc-shiftgroup">`;
+        html += `<div class="vc-shifthdr">Смена ${sh} · ${list.length} чел · итого ${fmtSec(sum)}</div>`;
+        html += `<table class="vc-rtable"><thead><tr>`;
+        html += `<th>#</th><th>Ник</th><th>Пн</th><th>Вт</th><th>Ср</th><th>Чт</th><th>Пт</th><th>Сб</th><th>Вс</th><th>Итого</th>`;
+        html += `</tr></thead><tbody>`;
+        list.forEach((r, i) => {
+            html += `<tr>`;
+            html += `<td>${i+1}</td>`;
+            html += `<td>${(r.nick||'').replace(/</g,'&lt;')}<br><span style="color:#666;font-size:0.7rem">${r.discord_id}</span></td>`;
+            html += `<td>${fmtSec(r.mon_seconds)}</td>`;
+            html += `<td>${fmtSec(r.tue_seconds)}</td>`;
+            html += `<td>${fmtSec(r.wed_seconds)}</td>`;
+            html += `<td>${fmtSec(r.thu_seconds)}</td>`;
+            html += `<td>${fmtSec(r.fri_seconds)}</td>`;
+            html += `<td>${fmtSec(r.sat_seconds)}</td>`;
+            html += `<td>${fmtSec(r.sun_seconds)}</td>`;
+            html += `<td class="vc-tot">${fmtSec(r.total_seconds)}</td>`;
+            html += `</tr>`;
+        });
+        html += `</tbody></table></div>`;
+    });
+    $resultsBody.innerHTML = html;
+}
+
+function renderShiftFilter() {
+    const shifts = Array.from(new Set(resultsRows.map(r => r.shift).filter(Boolean))).sort();
+    if (!shifts.length) { $shiftFilter.innerHTML = ''; return; }
+    let html = '<div class="vc-tabs">';
+    html += `<div class="vc-tab ${activeShift==='all'?'active':''}" data-sh="all">Все смены</div>`;
+    shifts.forEach(sh => {
+        html += `<div class="vc-tab ${activeShift===sh?'active':''}" data-sh="${sh}">Смена ${sh}</div>`;
+    });
+    html += '</div>';
+    $shiftFilter.innerHTML = html;
+    $shiftFilter.querySelectorAll('.vc-tab').forEach(el => {
+        el.addEventListener('click', () => { activeShift = el.dataset.sh; renderShiftFilter(); renderResults(); });
+    });
+}
+
+async function loadResults() {
+    try {
+        const r = await fetch('api.php?action=voice_stats_get');
+        const j = await r.json();
+        if (!j.success || !j.rows?.length) {
+            $resultsWrap.style.display = 'none';
+            return;
+        }
+        resultsRows = j.rows;
+        $resultsWrap.style.display = 'block';
+        renderShiftFilter();
+        renderResults();
+    } catch (e) {
+        $resultsWrap.style.display = 'none';
+    }
+}
+
+// Грузим результат при открытии и обновляем каждые 10 сек
+loadResults();
+setInterval(loadResults, 10000);
 </script>
 </body>
 </html>
